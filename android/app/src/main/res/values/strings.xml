@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SimpleSOAP</string>
+    <string name="title_activity_main">SimpleSOAP</string>
+    <string name="package_name">org.simplesoap.app</string>
+    <string name="custom_url_scheme">org.simplesoap.app</string>
+</resources>
