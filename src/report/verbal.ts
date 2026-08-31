@@ -302,6 +302,28 @@ function treatmentSummary(a: Assessment): { text: string; missing: boolean } {
  * phrase, producing "our evacuation plan is to ground, non-urgent, Schultz TH".
  * Knowing which slot each value fills is what lets it read as English.
  */
+/**
+ * Whether this report is actually asking for an evacuation.
+ *
+ * The opening line announced "a patient report and evacuation request"
+ * unconditionally, so a note with an empty plan promised the receiving end a
+ * request that never arrived — and a patient released on scene got one for an
+ * evacuation the note goes on to say is not required.
+ *
+ * Anticipated problems do not count. They are contingency notes for our own
+ * side; filling them in is not the same as asking anyone to come.
+ */
+function hasEvacuationRequest(e: Assessment['evacuation']): boolean {
+  if (e.mode === 'none — patient released') return false
+  return (
+    e.mode !== null ||
+    e.priority !== null ||
+    e.destination.trim() !== '' ||
+    e.method.trim() !== '' ||
+    e.supportRequested.trim() !== ''
+  )
+}
+
 function evacuationLine(a: Assessment): VerbalLine {
   const e = a.evacuation
 
@@ -365,7 +387,9 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
         line([
           'This is ',
           fill(a.attendingProvider),
-          ' with a patient report and evacuation request.',
+          hasEvacuationRequest(a.evacuation)
+            ? ' with a patient report and evacuation request.'
+            : ' with a patient report.',
         ]),
         line(['I have a ', fill(who || null), ' whose chief complaint is ', fill(a.chiefComplaint.summary), '.']),
         line([mechanismLead(a.chiefComplaint.nature), fill(a.chiefComplaint.mechanism), '.']),

@@ -474,6 +474,42 @@ describe('verbal report', () => {
     expect(sections[0].lines[0].text).toContain('N 44°')
   })
 
+  it('only promises an evacuation request when there is one', () => {
+    const opening = (a: Assessment) =>
+      buildVerbalReport(a).find((s) => s.heading === 'Subjective')!.lines[0].text
+
+    // an untouched plan asks for nothing
+    expect(opening(newAssessment())).toBe('This is ____ with a patient report.')
+
+    // a patient released on scene is not an evacuation request either — the
+    // Plan section goes on to say no evacuation is required
+    const released = populated()
+    released.evacuation = {
+      mode: 'none — patient released',
+      priority: null,
+      destination: '',
+      method: '',
+      supportRequested: '',
+      anticipatedProblems: '',
+    }
+    expect(opening(released)).not.toContain('evacuation request')
+
+    // contingency notes alone are not a request
+    const watching = newAssessment()
+    watching.evacuation = { ...watching.evacuation, anticipatedProblems: 'Watch for shock' }
+    expect(opening(watching)).not.toContain('evacuation request')
+
+    // any real part of the plan restores it
+    const planned = newAssessment()
+    planned.attendingProvider = 'Casey'
+    planned.evacuation = { ...planned.evacuation, mode: 'ground' }
+    expect(opening(planned)).toBe('This is Casey with a patient report and evacuation request.')
+
+    const supportOnly = newAssessment()
+    supportOnly.evacuation = { ...supportOnly.evacuation, supportRequested: 'Litter team' }
+    expect(opening(supportOnly)).toContain('evacuation request')
+  })
+
   it('follows the NOLS section order', () => {
     expect(buildVerbalReport(populated()).map((s) => s.heading)).toEqual([
       'Location first',
