@@ -386,7 +386,7 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
           spokenVitals(v),
           '.',
         ]),
-        line(['Pertinent history: ', sampleSummary(a), '.']),
+        line(['SAMPLE history: ', sampleSummary(a), '.']),
       ],
     },
     {

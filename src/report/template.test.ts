@@ -623,7 +623,7 @@ describe('verbal report', () => {
 
     // each element is its own sentence, so the eye has somewhere to land
     expect(text).toBe(
-      'Pertinent history: No known allergies. No medications. No pertinent past medical history. ' +
+      'SAMPLE history: No known allergies. No medications. No pertinent past medical history. ' +
         'Normal ins/outs. No medical issues preceded crash.',
     )
     expect(text).not.toContain('allergies No known')
@@ -635,7 +635,7 @@ describe('verbal report', () => {
     a.sample = { ...a.sample, allergies: 'No known allergies.', medications: 'None.' }
     const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[2].text
     // a bare "None" takes the element's name — "Taking None" helps nobody
-    expect(text).toBe('Pertinent history: No known allergies. Medications: none.')
+    expect(text).toBe('SAMPLE history: No known allergies. Medications: none.')
     expect(text).not.toContain('..')
     expect(text).not.toContain('Taking None')
   })
