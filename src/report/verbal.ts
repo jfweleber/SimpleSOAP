@@ -119,6 +119,9 @@ function spokenRegion(region: string): string {
     const level = quadrant[2] === 'U' ? 'upper' : 'lower'
     return `${side} ${level} quadrant`
   }
+  // "on the back / spine" is read aloud as "back slash spine"; the spinal
+  // assessment has its own section, so the spoken form keeps just the site
+  if (region === 'Back / Spine') return 'back'
   return region.replace(/^R /, 'right ').replace(/^L /, 'left ').toLowerCase()
 }
 
@@ -150,39 +153,53 @@ function asSentence(text: string): string {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
 }
 
-/** Join clauses the way a person says a list, not the way a form prints one. */
-function spokenList(items: string[]): string {
-  if (items.length <= 1) return items.join('')
-  if (items.length === 2) return `${items[0]} and ${items[1]}`
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
+/**
+ * Words that place a finding, as opposed to merely qualifying it.
+ *
+ * "right" and "upper" are dropped because they are far too common in free
+ * text: a description reading "right side of chest" would otherwise count as
+ * having placed a finding whose region is the right forearm.
+ */
+const REGION_QUALIFIERS = new Set(['r', 'l', 'right', 'left', 'upper', 'lower'])
+
+function regionNouns(region: string): string[] {
+  return region
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 3 && !REGION_QUALIFIERS.has(word))
 }
 
 /**
- * Head-to-toe findings as speech.
+ * Head-to-toe findings as speech, one sentence each.
  *
- * This used to emit "chest: Point source tenderness along R chest; r forearm:
- * Abrasions" — punctuation nobody says, laterality destroyed, and the site
- * named twice because the responder had already written it into the
- * description. A region is only announced when the description has not
- * already said where it is.
+ * Two problems fed each other here. Findings were comma-joined, but a
+ * responder writes commas inside a description too — "right side of chest,
+ * point source tenderness, abrasions" — so the separator between findings was
+ * indistinguishable from the punctuation within one, and a four-finding survey
+ * arrived as a single unreadable run. And the site was announced even when the
+ * description had already given it, producing "swelling and abrasions on upper
+ * right back on the back / spine".
+ *
+ * So each finding is its own sentence, and a region is named only when the
+ * description has not already placed it — matched on whole words, so "forearm"
+ * never counts as having mentioned the "arm".
  */
 function pertinentFindings(a: Assessment): { text: string; missing: boolean } {
   const found = a.findings
     .filter((f) => f.description.trim())
     .map((f) => {
-      const description = uncapitalize(f.description.trim())
-      const region = spokenRegion(f.region)
-      const said = description.toLowerCase()
-      const noun = region.split(' ').pop() ?? region
-      const abbreviation = /([RL][UL]Q)/.exec(f.region)?.[1]
-      const alreadyPlaced =
-        said.includes(noun.toLowerCase()) ||
-        (abbreviation !== undefined && said.includes(abbreviation.toLowerCase()))
-      return alreadyPlaced ? description : `${description} on the ${region}`
+      const description = f.description.trim()
+      const spoken = description.toLowerCase().split(/[^a-z0-9]+/)
+      const words = new Set(spoken.filter(Boolean))
+      const placed = regionNouns(f.region).some((noun) => words.has(noun))
+      return asSentence(
+        placed ? description : `${uncapitalize(description)} on the ${spokenRegion(f.region)}`,
+      )
     })
-  if (found.length) return { text: spokenList(found), missing: false }
+
+  if (found.length) return { text: found.join('. '), missing: false }
   if (a.headToToeClear) {
-    return { text: 'no abnormal findings on a full head-to-toe survey', missing: false }
+    return { text: 'No abnormal findings on a full survey', missing: false }
   }
   return { text: BLANK, missing: true }
 }
@@ -363,7 +380,7 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
       heading: 'Objective',
       hint: 'Head to toe, vitals, history',
       lines: [
-        line(['Patient has ', pertinentFindings(a), '.']),
+        line(['Head to toe: ', pertinentFindings(a), '.']),
         line([
           v ? `As of ${clockTime(v.takenAt)}, the patient's vital signs are ` : "The patient's vital signs are ",
           spokenVitals(v),

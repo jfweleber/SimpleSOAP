@@ -544,11 +544,50 @@ describe('verbal report', () => {
 
     // the description already said "chest", so the region is not repeated
     expect(text).toBe(
-      'Patient has point source tenderness along R chest and abrasions on the right forearm.',
+      'Head to toe: Point source tenderness along R chest. Abrasions on the right forearm.',
     )
     // the old form, and the laterality it destroyed
     expect(text).not.toContain('chest:')
     expect(text).not.toContain('r forearm')
+  })
+
+  it('keeps findings apart when the descriptions contain commas', () => {
+    const a = newAssessment()
+    a.findings = [
+      { id: 'f1', region: 'Chest', description: 'Right side of chest, point source tenderness, abrasions', treated: false },
+      { id: 'f2', region: 'R forearm', description: 'Bruising', treated: false },
+    ]
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
+
+    // a comma inside a description must not read as the break between findings
+    expect(text).toBe(
+      'Head to toe: Right side of chest, point source tenderness, abrasions. ' +
+        'Bruising on the right forearm.',
+    )
+  })
+
+  it('does not name a site the description already gave', () => {
+    const a = newAssessment()
+    a.findings = [
+      { id: 'f1', region: 'Back / Spine', description: 'Swelling and abrasions on upper right back', treated: false },
+    ]
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
+
+    expect(text).toBe('Head to toe: Swelling and abrasions on upper right back.')
+    expect(text).not.toContain('on the back / spine')
+  })
+
+  it('does not treat a shared qualifier as having placed the finding', () => {
+    const a = newAssessment()
+    a.findings = [
+      { id: 'f1', region: 'R forearm', description: 'Abrasions to the right side', treated: false },
+      // "forearm" must not count as having mentioned the "arm"
+      { id: 'f2', region: 'R upper arm', description: 'Tenderness near the forearm', treated: false },
+    ]
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
+
+    expect(text).toContain('Abrasions to the right side on the right forearm')
+    expect(text).toContain('Tenderness near the forearm on the right upper arm')
   })
 
   it('expands laterality and abdominal quadrants for the radio', () => {
@@ -558,8 +597,8 @@ describe('verbal report', () => {
       { id: 'f2', region: 'Abdomen RUQ', description: 'Guarding', treated: false },
     ]
     const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
-    expect(text).toContain('swelling on the left knee')
-    expect(text).toContain('guarding on the right upper quadrant')
+    expect(text).toContain('Swelling on the left knee')
+    expect(text).toContain('Guarding on the right upper quadrant')
   })
 
   it('keeps acronyms in a finding intact', () => {
@@ -567,6 +606,7 @@ describe('verbal report', () => {
     a.findings = [{ id: 'f1', region: 'R hand', description: 'CSM intact', treated: false }]
     const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
     expect(text).toContain('CSM intact on the right hand')
+    expect(text).not.toContain('cSM')
   })
 
   it('does not repeat a SAMPLE label the answer already contains', () => {
@@ -626,7 +666,7 @@ describe('verbal report', () => {
     const a = newAssessment()
     a.headToToeClear = true
     const objective = buildVerbalReport(a).find((s) => s.heading === 'Objective')!
-    expect(objective.lines[0].text).toContain('no abnormal findings')
+    expect(objective.lines[0].text).toContain('No abnormal findings')
     expect(objective.lines[0].incomplete).toBe(false)
   })
 })
