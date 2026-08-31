@@ -134,6 +134,22 @@ function uncapitalize(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1)
 }
 
+/**
+ * A clause as its own sentence.
+ *
+ * Five history elements semicolon-joined into one line gave the eye nothing to
+ * land on — a wall of clauses that had to be read start to finish to find the
+ * one you wanted. A full stop and a capital chunk it into pieces that can be
+ * scanned, and give the voice somewhere to breathe.
+ *
+ * Trailing punctuation the responder typed is dropped so joining cannot double
+ * it up.
+ */
+function asSentence(text: string): string {
+  const trimmed = text.trim().replace(/[.;,]+$/, '')
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+}
+
 /** Join clauses the way a person says a list, not the way a form prints one. */
 function spokenList(items: string[]): string {
   if (items.length <= 1) return items.join('')
@@ -187,25 +203,31 @@ const SAMPLE_PARTS: ReadonlyArray<{
   get: (s: Assessment['sample']) => string
   /** the value already introduces itself, so no stem is needed */
   names: RegExp
+  /** names the element when the answer is a bare negative */
+  label: string
   stem: (value: string) => string
 }> = [
   {
     get: (s) => s.allergies,
+    label: 'Allergies',
     names: /allerg|\bnkda?\b/i,
     stem: (v) => `allergic to ${v}`,
   },
   {
     get: (s) => s.medications,
+    label: 'Medications',
     names: /medicat|\bmeds?\b/i,
     stem: (v) => `taking ${v}`,
   },
   {
     get: (s) => s.pastHistory,
+    label: 'Past history',
     names: /histor/i,
     stem: (v) => `history of ${v}`,
   },
   {
     get: (s) => s.lastIntakeOutput,
+    label: 'Last intake and output',
     names: /intake|output|\bins?\b|\bouts?\b|\bate\b|\bdrank\b|\bvoided\b/i,
     stem: (v) => `last intake and output was ${v}`,
   },
@@ -213,21 +235,33 @@ const SAMPLE_PARTS: ReadonlyArray<{
     // events are narrative by nature — "fell while scrambling" needs no stem,
     // and every phrasing we tried read worse than the responder's own words
     get: (s) => s.events,
+    label: 'Events',
     names: /.*/,
     stem: (v) => v,
   },
 ]
 
+/**
+ * A one-word denial, which no verb stem can absorb.
+ *
+ * "None" in the medications box is a complete answer to a responder and
+ * meaningless on its own over the radio — and "taking None" is worse than
+ * either. These take the element's name instead, so the receiver hears what
+ * is absent without the note inventing a clinical phrasing nobody typed.
+ */
+const BARE_NEGATIVE = /^(none|no|nil|n\/a|na|denies|negative|unknown)[.!]?$/i
+
 function sampleSummary(a: Assessment): { text: string; missing: boolean } {
-  const clauses = SAMPLE_PARTS.map(({ get, names, stem }) => {
+  const clauses = SAMPLE_PARTS.map(({ get, names, label, stem }) => {
     const value = get(a.sample).trim()
     if (!value) return null
     const spoken = oneLine(value) || value
-    return uncapitalize(names.test(spoken) ? spoken : stem(spoken))
+    if (BARE_NEGATIVE.test(spoken)) return asSentence(`${label}: ${spoken.toLowerCase()}`)
+    return asSentence(names.test(spoken) ? spoken : stem(spoken))
   }).filter((clause): clause is string => clause !== null)
 
   return clauses.length
-    ? { text: clauses.join('; '), missing: false }
+    ? { text: clauses.join('. '), missing: false }
     : { text: BLANK, missing: true }
 }
 

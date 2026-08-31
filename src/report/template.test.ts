@@ -581,11 +581,23 @@ describe('verbal report', () => {
     }
     const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[2].text
 
+    // each element is its own sentence, so the eye has somewhere to land
     expect(text).toBe(
-      'Pertinent history: no known allergies; no medications; no pertinent past medical history; ' +
-        'normal ins/outs; no medical issues preceded crash.',
+      'Pertinent history: No known allergies. No medications. No pertinent past medical history. ' +
+        'Normal ins/outs. No medical issues preceded crash.',
     )
     expect(text).not.toContain('allergies No known')
+    expect(text).not.toContain(';')
+  })
+
+  it('does not double a full stop the responder already typed', () => {
+    const a = newAssessment()
+    a.sample = { ...a.sample, allergies: 'No known allergies.', medications: 'None.' }
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[2].text
+    // a bare "None" takes the element's name — "Taking None" helps nobody
+    expect(text).toBe('Pertinent history: No known allergies. Medications: none.')
+    expect(text).not.toContain('..')
+    expect(text).not.toContain('Taking None')
   })
 
   it('gives a bare SAMPLE answer something to hang on', () => {
@@ -602,12 +614,12 @@ describe('verbal report', () => {
 
     // the responder's own capitalisation survives — lowercasing a value would
     // mangle brand names like Tylenol, and the stem already opens the clause
-    expect(text).toContain('allergic to Penicillin')
-    expect(text).toContain('taking Lisinopril')
-    expect(text).toContain('history of Hypertension')
-    expect(text).toContain('last intake and output was Breakfast at 0800')
+    expect(text).toContain('Allergic to Penicillin')
+    expect(text).toContain('Taking Lisinopril')
+    expect(text).toContain('History of Hypertension')
+    expect(text).toContain('Last intake and output was Breakfast at 0800')
     // events carry their own narrative and take no stem
-    expect(text).toContain('fell while scrambling')
+    expect(text).toContain('Fell while scrambling')
   })
 
   it('reports a confirmed-clear survey as a positive finding', () => {
