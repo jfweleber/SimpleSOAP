@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderReport } from './template'
+import { renderReport, reportBody, reportStyles } from './template'
 import { newAssessment, newVitalSet } from '../model/factory'
 import { spinalVerdict } from '../model/types'
 import { buildVerbalReport } from './verbal'
@@ -148,6 +148,44 @@ describe('report', () => {
     a.vitals[0].bpPalpated = true
     a.vitals[0].diastolic = null
     expect(renderReport(a)).toContain('124/P')
+  })
+
+  it('reports a hand-felt pulse as a pulse, never as a blood pressure', () => {
+    const a = populated()
+    a.vitals[0].systolic = null
+    a.vitals[0].diastolic = null
+    a.vitals[0].palpablePulse = 'radial'
+    const html = renderReport(a)
+    expect(html).toContain('radial pulse')
+    expect(html).toContain('no cuff')
+    expect(html).not.toContain('radial/')
+  })
+
+  it('flags a patient with no palpable pulse', () => {
+    const a = populated()
+    a.vitals[0].systolic = null
+    a.vitals[0].palpablePulse = 'none palpable'
+    expect(renderReport(a)).toContain('no pulse palpable')
+  })
+
+  it('keeps a cuff reading and a felt pulse distinct', () => {
+    const a = populated()
+    a.vitals[0].palpablePulse = 'radial'
+    const html = renderReport(a)
+    expect(html).toContain('124/78')
+    expect(html).toContain('(radial)')
+  })
+
+  it('scopes its stylesheet so printing in the app cannot restyle the app', () => {
+    const css = reportStyles('#soap-print')
+    expect(css).toContain('#soap-print .banner')
+    // a bare element rule would reach the running app's own markup
+    expect(css).not.toMatch(/(^|\n)\s*(body|table|th|td|tr|thead|\*)\s*[,{]/)
+  })
+
+  it('renders the same markup in the page as in the standalone document', () => {
+    const a = populated()
+    expect(renderReport(a)).toContain(reportBody(a).trim().slice(0, 200))
   })
 
   it('flags a draft that has not been finalized', () => {

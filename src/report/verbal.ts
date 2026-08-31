@@ -92,8 +92,14 @@ export function spokenVitals(v: VitalSet | null): { text: string; missing: boole
   const sctm = [v.skinColor, v.skinTemp, v.skinMoisture].filter(Boolean)
   if (sctm.length) parts.push(`skin ${sctm.join(', ')}`)
   if (v.systolic !== null) {
+    const bp = `blood pressure ${v.systolic} over ${v.bpPalpated ? 'palp' : (v.diastolic ?? BLANK)}`
+    parts.push(v.palpablePulse ? `${bp}, ${v.palpablePulse} pulse` : bp)
+  } else if (v.palpablePulse) {
+    // said as a pulse check, never as a pressure
     parts.push(
-      `blood pressure ${v.systolic} over ${v.bpPalpated ? 'palp' : (v.diastolic ?? BLANK)}`,
+      v.palpablePulse === 'none palpable'
+        ? 'no palpable pulse'
+        : `no cuff, ${v.palpablePulse} pulse present`,
     )
   }
   if (v.pupils) parts.push(`pupils ${v.pupils}`)

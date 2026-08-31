@@ -71,6 +71,7 @@ export function newVitalSet(takenAt = Date.now()): VitalSet {
     systolic: null,
     diastolic: null,
     bpPalpated: false,
+    palpablePulse: null,
     spo2: null,
     temperatureF: null,
     skinColor: null,
@@ -125,6 +126,7 @@ export function isBlankVitalSet(v: VitalSet): boolean {
     v.heartRate === null &&
     v.respiratoryRate === null &&
     v.systolic === null &&
+    v.palpablePulse === null &&
     v.spo2 === null &&
     v.temperatureF === null &&
     v.skinColor === null &&

@@ -87,7 +87,16 @@ function migrateVitalSet(v: Assessment['vitals'][number]): Assessment['vitals'][
     skinMoisture:
       raw.skinMoisture === 'clammy'
         ? 'moist'
-        : (raw.skinMoisture as Assessment['vitals'][number]['skinMoisture']) ?? null,
+        : raw.skinMoisture === 'diaphoretic'
+          ? 'sweaty'
+          : (raw.skinMoisture as Assessment['vitals'][number]['skinMoisture']) ?? null,
+    // 'easy' was renamed, not redefined
+    breathQuality:
+      raw.breathQuality === 'easy'
+        ? 'normal'
+        : (raw.breathQuality as Assessment['vitals'][number]['breathQuality']) ?? null,
+    palpablePulse:
+      (raw.palpablePulse as Assessment['vitals'][number]['palpablePulse']) ?? null,
   }
 }
 

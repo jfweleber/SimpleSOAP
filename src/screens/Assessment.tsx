@@ -11,6 +11,7 @@ import {
   SEX,
   WEIGHT_UNITS,
   spinalVerdict,
+  PALPABLE_PULSE,
   PULSE_QUALITY,
   PUPILS,
   RESPONSIVENESS,
@@ -529,6 +530,7 @@ ${complaint}` : complaint,
                   {v.heartRate !== null && ' hr'}
                   {v.respiratoryRate !== null && ` · ${v.respiratoryRate} rr`}
                   {v.systolic !== null && ` · ${v.systolic}/${v.bpPalpated ? 'P' : (v.diastolic ?? '—')}`}
+                  {v.systolic === null && v.palpablePulse !== null && ` · ${v.palpablePulse}`}
                   {v.spo2 !== null && ` · ${v.spo2}%`}
                   {v.responsiveness && ` · ${v.responsiveness}`}
                 </span>
@@ -1044,17 +1046,16 @@ function VitalsEditor({
             value={v.responsiveness} disabled={locked}
             onChange={(x) => set({ responsiveness: x })} />
 
-          <Row>
-            <NumberField label="Heart rate" unit="bpm" min={20} max={250}
-              value={v.heartRate} disabled={locked} onChange={(x) => set({ heartRate: x })} />
-            <NumberField label="Respiratory rate" unit="br/min" min={4} max={60}
-              value={v.respiratoryRate} disabled={locked} onChange={(x) => set({ respiratoryRate: x })} />
-          </Row>
-
+          <NumberField label="Heart rate" unit="bpm" min={20} max={250}
+            value={v.heartRate} disabled={locked} onChange={(x) => set({ heartRate: x })} />
           <Choice label="Pulse rhythm" options={RHYTHM} value={v.pulseRhythm} disabled={locked}
             onChange={(x) => set({ pulseRhythm: x })} />
           <Choice label="Pulse quality" options={PULSE_QUALITY} value={v.pulseQuality} disabled={locked}
             onChange={(x) => set({ pulseQuality: x })} />
+
+          <NumberField label="Respiratory rate" unit="br/min" min={4} max={60}
+            value={v.respiratoryRate} disabled={locked}
+            onChange={(x) => set({ respiratoryRate: x })} />
           <Choice label="Breathing" options={BREATH_QUALITY} value={v.breathQuality} disabled={locked}
             onChange={(x) => set({ breathQuality: x })} />
 
@@ -1066,6 +1067,14 @@ function VitalsEditor({
           </Row>
           <Toggle label="Taken by palpation (no diastolic)" checked={v.bpPalpated} disabled={locked}
             onChange={(x) => set({ bpPalpated: x, diastolic: x ? null : v.diastolic })} />
+
+          <Choice label="Palpable pulse (no cuff)" options={PALPABLE_PULSE}
+            value={v.palpablePulse} disabled={locked}
+            onChange={(x) => set({ palpablePulse: x })} />
+          <p className="fieldHint">
+            The most distal pulse you could feel. It is a rough floor on systolic pressure, not a
+            blood pressure — the report prints it as what it is.
+          </p>
 
           <Row>
             <NumberField label="SpO₂" unit="%" min={50} max={100} value={v.spo2} disabled={locked}

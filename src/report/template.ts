@@ -41,11 +41,22 @@ function sctm(v: VitalSet): string {
   return parts.length ? esc(parts.join(', ')) : '—'
 }
 
+/**
+ * A hand-felt pulse is not a blood pressure, so it never renders as a number
+ * over a number. With no cuff it stands alone in the column; alongside a
+ * reading it is a parenthetical.
+ */
 function bloodPressure(v: VitalSet): string {
-  if (v.systolic === null) return '—'
-  if (v.bpPalpated) return `${v.systolic}/P`
-  if (v.diastolic === null) return `${v.systolic}/—`
-  return `${v.systolic}/${v.diastolic}`
+  const felt = v.palpablePulse
+  if (v.systolic === null) {
+    if (!felt) return '—'
+    if (felt === 'none palpable') return '<span class="flag">no pulse palpable</span>'
+    return `${esc(felt)} pulse<br><span class="qual">no cuff</span>`
+  }
+  const cuff = v.bpPalpated
+    ? `${v.systolic}/P`
+    : `${v.systolic}/${v.diastolic === null ? '—' : v.diastolic}`
+  return felt ? `${cuff} <span class="qual">(${esc(felt)})</span>` : cuff
 }
 
 function pulse(v: VitalSet): string {
@@ -353,76 +364,83 @@ export interface ReportOptions {
   includeTelemetry?: boolean
 }
 
-export function renderReport(a: Assessment, options: ReportOptions = {}): string {
-  const status = a.finalizedAt
-    ? `Finalized ${dateTime(a.finalizedAt)}`
-    : 'DRAFT — not finalized'
-
-  return `<!doctype html>
-<html><head><meta charset="utf-8">
-<title>SOAP Note — ${esc(a.patient.name.trim() || 'Name unknown')}</title>
-<style>
+/**
+ * The report stylesheet, scoped to one selector.
+ *
+ * The standalone document scopes to `body`; printing inside the running app
+ * scopes to a container div, because WebKit will not print an iframe (see
+ * pdf.ts) and the report has to live in the page being printed.
+ */
+export function reportStyles(s: string): string {
+  return `
   @page { size: letter; margin: 0.55in 0.5in; }
-  * { box-sizing: border-box; }
-  body {
+  ${s}, ${s} * { box-sizing: border-box; }
+  ${s} {
     font-family: -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
     font-size: 9.5pt; line-height: 1.4; color: #000; margin: 0;
     -webkit-print-color-adjust: exact;
   }
-  .banner {
+  ${s} .banner {
     border-bottom: 2px solid #000; padding-bottom: 6pt; margin-bottom: 10pt;
     display: flex; justify-content: space-between; align-items: flex-end;
   }
-  .banner h1 { font-size: 16pt; margin: 0; letter-spacing: -0.01em; }
-  .banner .who { display: flex; gap: 8pt; align-items: center; }
-  .banner .mark { width: 26pt; height: 26pt; flex: none; }
-  .banner .meta { text-align: right; font-size: 8pt; line-height: 1.5; }
-  .practice {
+  ${s} .banner h1 { font-size: 16pt; margin: 0; letter-spacing: -0.01em; }
+  ${s} .banner .who { display: flex; gap: 8pt; align-items: center; }
+  ${s} .banner .mark { width: 26pt; height: 26pt; flex: none; }
+  ${s} .banner .meta { text-align: right; font-size: 8pt; line-height: 1.5; }
+  ${s} .practice {
     border: 1.5pt solid #000; padding: 3pt 6pt; font-weight: 700;
     font-size: 9pt; text-align: center; margin-bottom: 8pt; letter-spacing: 0.06em;
   }
-  .sec { margin-bottom: 11pt; page-break-inside: avoid; }
-  .sec h2 {
+  ${s} .sec { margin-bottom: 11pt; page-break-inside: avoid; }
+  ${s} .sec h2 {
     font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.09em;
     border-bottom: 0.75pt solid #000; padding-bottom: 2pt; margin: 0 0 5pt;
   }
-  .sec h3 { font-size: 10pt; margin: 7pt 0 3pt; }
-  .fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2pt 14pt; margin: 0; }
-  .fields.wide { grid-template-columns: 1fr; }
-  .f { display: flex; gap: 6pt; break-inside: avoid; }
-  .f dt { font-weight: 700; min-width: 74pt; flex: none; }
-  .f dd { margin: 0; flex: 1; }
-  .none { color: #666; }
-  .confirmed { margin: 0; font-weight: 600; }
-  .applead { font-size: 8pt; color: #333; margin: 0 0 4pt; max-width: none; }
-  .h2t { display: flex; gap: 12pt; align-items: flex-start; page-break-inside: avoid; }
-  .h2tFig { flex: none; width: 118pt; }
-  .bodymap { width: 100%; height: auto; }
-  .h2tList { flex: 1; display: flex; flex-direction: column; gap: 3pt; padding-top: 2pt; }
-  .fnd { display: flex; gap: 5pt; align-items: baseline; break-inside: avoid; }
-  .fndN {
+  ${s} .sec h3 { font-size: 10pt; margin: 7pt 0 3pt; }
+  ${s} .fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2pt 14pt; margin: 0; }
+  ${s} .fields.wide { grid-template-columns: 1fr; }
+  ${s} .f { display: flex; gap: 6pt; break-inside: avoid; }
+  ${s} .f dt { font-weight: 700; min-width: 74pt; flex: none; }
+  ${s} .f dd { margin: 0; flex: 1; }
+  ${s} .none { color: #666; }
+  ${s} .confirmed { margin: 0; font-weight: 600; }
+  ${s} .applead { font-size: 8pt; color: #333; margin: 0 0 4pt; max-width: none; }
+  ${s} .h2t { display: flex; gap: 12pt; align-items: flex-start; page-break-inside: avoid; }
+  ${s} .h2tFig { flex: none; width: 118pt; }
+  ${s} .bodymap { width: 100%; height: auto; }
+  ${s} .h2tList { flex: 1; display: flex; flex-direction: column; gap: 3pt; padding-top: 2pt; }
+  ${s} .fnd { display: flex; gap: 5pt; align-items: baseline; break-inside: avoid; }
+  ${s} .fndN {
     flex: none; width: 13pt; height: 13pt; border: 0.75pt solid #000; border-radius: 50%;
     text-align: center; font-weight: 700; font-size: 7.5pt; line-height: 12pt;
   }
-  .fndR { flex: none; font-weight: 700; min-width: 62pt; }
-  .fndD { flex: 1; }
-  .flag { text-decoration: underline; }
-  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-  thead { display: table-header-group; }
-  tr { page-break-inside: avoid; }
-  th, td { border: 0.5pt solid #999; padding: 2.5pt 4pt; text-align: left; vertical-align: top; }
-  th { background: #e8e8e8; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; }
-  td.t { white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .qual { color: #444; font-size: 7.5pt; }
-  .dev { margin-left: 3pt; }
-  .vnotes { margin: 5pt 0 0; padding-left: 12pt; font-size: 8.5pt; }
-  .opqrst { margin-bottom: 6pt; page-break-inside: avoid; }
-  .sig { margin-top: 16pt; border-top: 0.75pt solid #000; padding-top: 6pt;
+  ${s} .fndR { flex: none; font-weight: 700; min-width: 62pt; }
+  ${s} .fndD { flex: 1; }
+  ${s} .flag { text-decoration: underline; }
+  ${s} table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  ${s} thead { display: table-header-group; }
+  ${s} tr { page-break-inside: avoid; }
+  ${s} th, ${s} td { border: 0.5pt solid #999; padding: 2.5pt 4pt; text-align: left; vertical-align: top; }
+  ${s} th { background: #e8e8e8; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; }
+  ${s} td.t { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  ${s} .qual { color: #444; font-size: 7.5pt; }
+  ${s} .dev { margin-left: 3pt; }
+  ${s} .vnotes { margin: 5pt 0 0; padding-left: 12pt; font-size: 8.5pt; }
+  ${s} .opqrst { margin-bottom: 6pt; page-break-inside: avoid; }
+  ${s} .sig { margin-top: 16pt; border-top: 0.75pt solid #000; padding-top: 6pt;
          display: flex; justify-content: space-between; font-size: 8pt; }
-  .foot { margin-top: 10pt; font-size: 7.5pt; color: #444; text-align: center;
-          border-top: 0.5pt solid #ccc; padding-top: 4pt; }
-</style></head>
-<body>
+  ${s} .foot { margin-top: 10pt; font-size: 7.5pt; color: #444; text-align: center;
+          border-top: 0.5pt solid #ccc; padding-top: 4pt; }`
+}
+
+/** The report markup itself, with no document scaffolding around it. */
+export function reportBody(a: Assessment, options: ReportOptions = {}): string {
+  const status = a.finalizedAt
+    ? `Finalized ${dateTime(a.finalizedAt)}`
+    : 'DRAFT — not finalized'
+
+  return `
 
 <div class="banner">
   <div class="who">
@@ -524,6 +542,13 @@ ${options.includeTelemetry ? telemetryTable(a) : ''}
   Recorded with SimpleSOAP · ▪ marks a reading captured from a connected device ·
   Generated ${dateTime(Date.now())}
 </div>
+`
+}
 
-</body></html>`
+export function renderReport(a: Assessment, options: ReportOptions = {}): string {
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<title>SOAP Note — ${esc(a.patient.name.trim() || 'Name unknown')}</title>
+<style>${reportStyles('body')}</style></head>
+<body>${reportBody(a, options)}</body></html>`
 }

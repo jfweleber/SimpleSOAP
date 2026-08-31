@@ -24,13 +24,21 @@ export type Responsiveness = (typeof RESPONSIVENESS)[number]
 
 export const PULSE_QUALITY = ['strong', 'weak', 'thready', 'bounding'] as const
 export const RHYTHM = ['regular', 'irregular'] as const
-export const BREATH_QUALITY = ['easy', 'labored', 'shallow', 'noisy'] as const
+export const BREATH_QUALITY = ['normal', 'labored', 'shallow', 'noisy'] as const
 
 export const SKIN_COLOR = ['pink', 'pale', 'flushed', 'cyanotic', 'jaundiced', 'mottled'] as const
 export const SKIN_TEMP = ['warm', 'hot', 'cool', 'cold'] as const
 // 'clammy' is dropped: it describes moisture AND temperature at once, which
 // the separate skin-temperature field already covers.
-export const SKIN_MOISTURE = ['dry', 'moist', 'diaphoretic'] as const
+export const SKIN_MOISTURE = ['dry', 'moist', 'sweaty'] as const
+
+/**
+ * Where a pulse could still be felt, for the common SAR case of no cuff in
+ * anyone's pack. The most distal site that is palpable is a rough floor on
+ * systolic pressure, so the list runs distal to proximal and ends with the
+ * confirmed negative.
+ */
+export const PALPABLE_PULSE = ['radial', 'pedal', 'femoral', 'carotid', 'none palpable'] as const
 
 export const PUPILS = [
   'PERRL',
@@ -64,6 +72,8 @@ export interface VitalSet {
   diastolic: number | null
   /** true when BP was taken by palpation, so diastolic is legitimately absent */
   bpPalpated: boolean
+  /** pulse felt by hand when no cuff was available — never a substitute for a reading */
+  palpablePulse: (typeof PALPABLE_PULSE)[number] | null
   spo2: number | null
   /** Fahrenheit — this is used in the US */
   temperatureF: number | null

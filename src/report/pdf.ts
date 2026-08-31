@@ -1,6 +1,6 @@
 import { registerPlugin } from '@capacitor/core'
 import type { Assessment } from '../model/types'
-import { renderReport } from './template'
+import { renderReport, reportBody, reportStyles } from './template'
 import type { ReportOptions } from './template'
 
 interface PdfPluginApi {
@@ -20,9 +20,9 @@ function jobNameFor(a: Assessment): string {
  * Hand the report to Android's print dialog, where it can be saved as a PDF
  * or sent to a printer.
  *
- * On the web build there is no native plugin, so the report opens in a new
- * window and the browser's own print dialog takes over — same document,
- * same stylesheet.
+ * On the web build there is no native plugin, so the report is printed from
+ * the page itself and the browser's own print dialog takes over — same
+ * markup, same stylesheet.
  */
 export async function exportReport(
   assessment: Assessment,
@@ -35,7 +35,7 @@ export async function exportReport(
     await Pdf.print({ html, jobName })
   } catch (error) {
     if (!isPluginMissing(error)) throw error
-    printInBrowser(html)
+    printInBrowser(assessment, options, jobName)
   }
 }
 
@@ -44,41 +44,54 @@ function isPluginMissing(error: unknown): boolean {
   return /not implemented|unimplemented|not available/i.test(message)
 }
 
+const PRINT_ID = 'soap-print'
+
 /**
- * Print from a hidden iframe rather than a new window.
+ * Print the report by putting it into the page that is already open.
  *
- * Mobile browsers block popups opened outside a direct click, and the export
- * happens after an await. An iframe is same-document, so nothing can block it,
- * and the browser's own print dialog offers Save as PDF.
+ * The obvious approach — render into a hidden iframe and call print() on it —
+ * works in Chromium and Gecko and silently does the wrong thing in WebKit:
+ * iOS Safari ignores the frame and prints the top-level document, so what came
+ * out of an iPhone was a paginated screenshot of the assessment screen. Every
+ * browser on iOS is WebKit, so that is all of them.
+ *
+ * So the report goes into the top-level document instead, styles scoped to its
+ * own container, with everything else hidden for print only. One code path for
+ * all three targets, and nothing on screen changes.
  */
-function printInBrowser(html: string): void {
-  const frame = document.createElement('iframe')
-  frame.setAttribute('aria-hidden', 'true')
-  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;'
-  document.body.appendChild(frame)
+function printInBrowser(a: Assessment, options: ReportOptions, jobName: string): void {
+  document.getElementById(PRINT_ID)?.remove()
 
-  const doc = frame.contentDocument
-  if (!doc) {
-    frame.remove()
-    throw new Error('Could not prepare the report for printing.')
-  }
-
-  doc.open()
-  doc.write(html)
-  doc.close()
-
-  const go = () => {
-    try {
-      frame.contentWindow?.focus()
-      frame.contentWindow?.print()
-    } finally {
-      // leave it long enough for the dialog to take its snapshot
-      setTimeout(() => frame.remove(), 60_000)
+  const host = document.createElement('div')
+  host.id = PRINT_ID
+  host.setAttribute('aria-hidden', 'true')
+  host.innerHTML = `<style>
+    @media screen { #${PRINT_ID} { display: none; } }
+    @media print {
+      html, body {
+        height: auto !important; background: #fff !important;
+        margin: 0 !important; padding: 0 !important; overflow: visible !important;
+      }
+      body > *:not(#${PRINT_ID}) { display: none !important; }
     }
-  }
+    ${reportStyles(`#${PRINT_ID}`)}
+  </style>${reportBody(a, options)}`
 
-  if (doc.readyState === 'complete') go()
-  else frame.addEventListener('load', go, { once: true })
+  document.body.appendChild(host)
+
+  // the document title is what the browser offers as the PDF filename
+  const title = document.title
+  document.title = jobName
+
+  const clean = () => {
+    host.remove()
+    document.title = title
+  }
+  window.addEventListener('afterprint', clean, { once: true })
+  // afterprint is unreliable in WebKit, so the node cannot be left to it alone
+  setTimeout(clean, 60_000)
+
+  window.print()
 }
 
 /** The report markup, for previewing inside the app. */
