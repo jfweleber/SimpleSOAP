@@ -534,6 +534,82 @@ describe('verbal report', () => {
     expect(text.incomplete).toBe(false)
   })
 
+  it('speaks findings without punctuation or a doubled site', () => {
+    const a = newAssessment()
+    a.findings = [
+      { id: 'f1', region: 'Chest', description: 'Point source tenderness along R chest', treated: false },
+      { id: 'f2', region: 'R forearm', description: 'Abrasions', treated: false },
+    ]
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
+
+    // the description already said "chest", so the region is not repeated
+    expect(text).toBe(
+      'Patient has point source tenderness along R chest and abrasions on the right forearm.',
+    )
+    // the old form, and the laterality it destroyed
+    expect(text).not.toContain('chest:')
+    expect(text).not.toContain('r forearm')
+  })
+
+  it('expands laterality and abdominal quadrants for the radio', () => {
+    const a = newAssessment()
+    a.findings = [
+      { id: 'f1', region: 'L knee', description: 'Swelling', treated: false },
+      { id: 'f2', region: 'Abdomen RUQ', description: 'Guarding', treated: false },
+    ]
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
+    expect(text).toContain('swelling on the left knee')
+    expect(text).toContain('guarding on the right upper quadrant')
+  })
+
+  it('keeps acronyms in a finding intact', () => {
+    const a = newAssessment()
+    a.findings = [{ id: 'f1', region: 'R hand', description: 'CSM intact', treated: false }]
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[0].text
+    expect(text).toContain('CSM intact on the right hand')
+  })
+
+  it('does not repeat a SAMPLE label the answer already contains', () => {
+    const a = newAssessment()
+    a.sample = {
+      symptoms: '',
+      allergies: 'No known allergies',
+      medications: 'No medications',
+      pastHistory: 'No pertinent past medical history',
+      lastIntakeOutput: 'Normal ins/outs',
+      events: 'No medical issues preceded crash',
+    }
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[2].text
+
+    expect(text).toBe(
+      'Pertinent history: no known allergies; no medications; no pertinent past medical history; ' +
+        'normal ins/outs; no medical issues preceded crash.',
+    )
+    expect(text).not.toContain('allergies No known')
+  })
+
+  it('gives a bare SAMPLE answer something to hang on', () => {
+    const a = newAssessment()
+    a.sample = {
+      symptoms: '',
+      allergies: 'Penicillin',
+      medications: 'Lisinopril',
+      pastHistory: 'Hypertension',
+      lastIntakeOutput: 'Breakfast at 0800',
+      events: 'Fell while scrambling',
+    }
+    const text = buildVerbalReport(a).find((s) => s.heading === 'Objective')!.lines[2].text
+
+    // the responder's own capitalisation survives — lowercasing a value would
+    // mangle brand names like Tylenol, and the stem already opens the clause
+    expect(text).toContain('allergic to Penicillin')
+    expect(text).toContain('taking Lisinopril')
+    expect(text).toContain('history of Hypertension')
+    expect(text).toContain('last intake and output was Breakfast at 0800')
+    // events carry their own narrative and take no stem
+    expect(text).toContain('fell while scrambling')
+  })
+
   it('reports a confirmed-clear survey as a positive finding', () => {
     const a = newAssessment()
     a.headToToeClear = true

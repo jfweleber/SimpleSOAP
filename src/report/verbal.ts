@@ -104,26 +104,131 @@ export function spokenVitals(v: VitalSet | null): { text: string; missing: boole
   return { text: parts.join(', '), missing: false }
 }
 
+/**
+ * Region names as they are said out loud.
+ *
+ * The picker stores compact labels — "R forearm", "Abdomen RUQ" — which are
+ * right on a screen and wrong on a radio. Lowercasing them, as this used to,
+ * turned "R forearm" into "r forearm" and threw away the laterality, which is
+ * the single most consequential word in the sentence.
+ */
+function spokenRegion(region: string): string {
+  const quadrant = /^Abdomen ([RL])([UL])Q$/.exec(region)
+  if (quadrant) {
+    const side = quadrant[1] === 'R' ? 'right' : 'left'
+    const level = quadrant[2] === 'U' ? 'upper' : 'lower'
+    return `${side} ${level} quadrant`
+  }
+  return region.replace(/^R /, 'right ').replace(/^L /, 'left ').toLowerCase()
+}
+
+/**
+ * Drop the capital a text box put there, but never on an acronym.
+ *
+ * "Abrasions" mid-sentence should read "abrasions"; CSM, PERRL and MOI carry
+ * meaning in their case and must survive intact.
+ */
+function uncapitalize(text: string): string {
+  const first = text.split(/\s+/)[0] ?? ''
+  if (first.length > 1 && first === first.toUpperCase()) return text
+  return text.charAt(0).toLowerCase() + text.slice(1)
+}
+
+/** Join clauses the way a person says a list, not the way a form prints one. */
+function spokenList(items: string[]): string {
+  if (items.length <= 1) return items.join('')
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
+}
+
+/**
+ * Head-to-toe findings as speech.
+ *
+ * This used to emit "chest: Point source tenderness along R chest; r forearm:
+ * Abrasions" — punctuation nobody says, laterality destroyed, and the site
+ * named twice because the responder had already written it into the
+ * description. A region is only announced when the description has not
+ * already said where it is.
+ */
 function pertinentFindings(a: Assessment): { text: string; missing: boolean } {
   const found = a.findings
     .filter((f) => f.description.trim())
-    .map((f) => `${f.region.toLowerCase()}: ${f.description.trim()}`)
-  if (found.length) return { text: found.join('; '), missing: false }
+    .map((f) => {
+      const description = uncapitalize(f.description.trim())
+      const region = spokenRegion(f.region)
+      const said = description.toLowerCase()
+      const noun = region.split(' ').pop() ?? region
+      const abbreviation = /([RL][UL]Q)/.exec(f.region)?.[1]
+      const alreadyPlaced =
+        said.includes(noun.toLowerCase()) ||
+        (abbreviation !== undefined && said.includes(abbreviation.toLowerCase()))
+      return alreadyPlaced ? description : `${description} on the ${region}`
+    })
+  if (found.length) return { text: spokenList(found), missing: false }
   if (a.headToToeClear) {
     return { text: 'no abnormal findings on a full head-to-toe survey', missing: false }
   }
   return { text: BLANK, missing: true }
 }
 
+/**
+ * SAMPLE history as sentences rather than a form read aloud.
+ *
+ * Every value used to be glued to its own label, so a note whose fields
+ * already read as complete answers came out as "allergies No known allergies,
+ * medications No medications" — the labels roughly doubled the length and
+ * buried the content they were meant to introduce.
+ *
+ * A value that already names its own element is spoken as it stands. Only a
+ * bare one gets a stem to hang on, so "Penicillin" still arrives as "allergic
+ * to penicillin" rather than as a word on its own.
+ */
+const SAMPLE_PARTS: ReadonlyArray<{
+  get: (s: Assessment['sample']) => string
+  /** the value already introduces itself, so no stem is needed */
+  names: RegExp
+  stem: (value: string) => string
+}> = [
+  {
+    get: (s) => s.allergies,
+    names: /allerg|\bnkda?\b/i,
+    stem: (v) => `allergic to ${v}`,
+  },
+  {
+    get: (s) => s.medications,
+    names: /medicat|\bmeds?\b/i,
+    stem: (v) => `taking ${v}`,
+  },
+  {
+    get: (s) => s.pastHistory,
+    names: /histor/i,
+    stem: (v) => `history of ${v}`,
+  },
+  {
+    get: (s) => s.lastIntakeOutput,
+    names: /intake|output|\bins?\b|\bouts?\b|\bate\b|\bdrank\b|\bvoided\b/i,
+    stem: (v) => `last intake and output was ${v}`,
+  },
+  {
+    // events are narrative by nature — "fell while scrambling" needs no stem,
+    // and every phrasing we tried read worse than the responder's own words
+    get: (s) => s.events,
+    names: /.*/,
+    stem: (v) => v,
+  },
+]
+
 function sampleSummary(a: Assessment): { text: string; missing: boolean } {
-  const bits: string[] = []
-  const s = a.sample
-  if (s.allergies.trim()) bits.push(`allergies ${s.allergies.trim()}`)
-  if (s.medications.trim()) bits.push(`medications ${s.medications.trim()}`)
-  if (s.pastHistory.trim()) bits.push(`history of ${s.pastHistory.trim()}`)
-  if (s.lastIntakeOutput.trim()) bits.push(`last intake and output ${s.lastIntakeOutput.trim()}`)
-  if (s.events.trim()) bits.push(`events ${s.events.trim()}`)
-  return bits.length ? { text: bits.join(', '), missing: false } : { text: BLANK, missing: true }
+  const clauses = SAMPLE_PARTS.map(({ get, names, stem }) => {
+    const value = get(a.sample).trim()
+    if (!value) return null
+    const spoken = oneLine(value) || value
+    return uncapitalize(names.test(spoken) ? spoken : stem(spoken))
+  }).filter((clause): clause is string => clause !== null)
+
+  return clauses.length
+    ? { text: clauses.join('; '), missing: false }
+    : { text: BLANK, missing: true }
 }
 
 function treatmentSummary(a: Assessment): { text: string; missing: boolean } {
@@ -230,7 +335,7 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
           spokenVitals(v),
           '.',
         ]),
-        line(['Pertinent SAMPLE history includes ', sampleSummary(a), '.']),
+        line(['Pertinent history: ', sampleSummary(a), '.']),
       ],
     },
     {
