@@ -332,7 +332,7 @@ export function AssessmentScreen({
         <Field
           label="Emergency contact"
           value={a.patient.emergencyContact}
-          hint="Next of kin — name and number"
+          hint="Name and phone number"
           disabled={locked}
           onChange={(v) => patch({ patient: { ...a.patient, emergencyContact: v } })}
         />
