@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderReport, reportBody, reportStyles } from './template'
 import { newAssessment, newVitalSet } from '../model/factory'
+import appCss from '../index.css?raw'
 import { spinalVerdict } from '../model/types'
 import { buildVerbalReport } from './verbal'
 import type { Assessment } from '../model/types'
@@ -178,9 +179,27 @@ describe('report', () => {
 
   it('scopes its stylesheet so printing in the app cannot restyle the app', () => {
     const css = reportStyles('#soap-print')
-    expect(css).toContain('#soap-print .banner')
+    expect(css).toContain('#soap-print .sr-banner')
     // a bare element rule would reach the running app's own markup
     expect(css).not.toMatch(/(^|\n)\s*(body|table|th|td|tr|thead|\*)\s*[,{]/)
+  })
+
+  it('shares no class name with the running app', () => {
+    // The report prints from inside the live document, so any class the app
+    // also styles would silently reshape a patient record. This caught
+    // .vitals — the app's two-column grid — splitting the vitals table in
+    // half on paper.
+    const classes = (css: string) =>
+      new Set(Array.from(css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g), (m) => m[1]))
+    const app = classes(appCss)
+    // the markup matters as much as the stylesheet: .vitals carried no rule of
+    // the report's own, which is exactly why the app's rule reached it
+    const used = new Set([
+      ...classes(reportStyles('#soap-print')),
+      ...Array.from(reportBody(populated(), { includeTelemetry: true }).matchAll(/class="([^"]+)"/g))
+        .flatMap((m) => m[1].split(/\s+/)),
+    ])
+    expect([...used].filter((c) => app.has(c))).toEqual([])
   })
 
   it('renders the same markup in the page as in the standalone document', () => {
@@ -326,8 +345,8 @@ describe('body map on the report', () => {
   it('numbers findings in head-to-toe order and reuses those numbers on the figure', () => {
     const html = renderReport(populated())
     // Head is region 1, R forearm is region 2 in anatomical order
-    expect(html).toContain('<span class="fndN">1</span><span class="fndR">Head</span>')
-    expect(html).toContain('<span class="fndN">2</span><span class="fndR">R forearm</span>')
+    expect(html).toContain('<span class="sr-fndN">1</span><span class="sr-fndR">Head</span>')
+    expect(html).toContain('<span class="sr-fndN">2</span><span class="sr-fndR">R forearm</span>')
     // and both numbers appear as badges inside the svg
     expect(html).toContain('font-weight="700" fill="#000">1</text>')
     expect(html).toContain('font-weight="700" fill="#000">2</text>')
@@ -748,7 +767,7 @@ describe('verbal report', () => {
 describe('report branding', () => {
   it('puts the mark in the banner', () => {
     const html = renderReport(populated())
-    expect(html).toContain('class="mark"')
+    expect(html).toContain('class="sr-mark"')
     // the pulse trace is knocked out of the pin, so it must stay white
     expect(html).toContain('stroke="#fff"')
   })
