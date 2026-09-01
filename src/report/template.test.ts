@@ -531,14 +531,14 @@ describe('verbal report', () => {
     expect(sections[0].lines[0].text).toContain('N 44°')
   })
 
-  it('only promises an evacuation request when there is one', () => {
+  it('only mentions the evacuation when there is something to say', () => {
     const opening = (a: Assessment) =>
       buildVerbalReport(a).find((s) => s.heading === 'Subjective')!.lines[0].text
 
     // an untouched plan asks for nothing
     expect(opening(newAssessment())).toBe('This is ____ with a patient report.')
 
-    // a patient released on scene is not an evacuation request either — the
+    // a patient released on scene has no evacuation to report — the
     // Plan section goes on to say no evacuation is required
     const released = populated()
     released.evacuation = {
@@ -549,22 +549,25 @@ describe('verbal report', () => {
       supportRequested: '',
       anticipatedProblems: '',
     }
-    expect(opening(released)).not.toContain('evacuation request')
+    expect(opening(released)).not.toContain('evacuation report')
 
-    // contingency notes alone are not a request
+    // contingency notes alone are for our own side, not the briefing
     const watching = newAssessment()
     watching.evacuation = { ...watching.evacuation, anticipatedProblems: 'Watch for shock' }
-    expect(opening(watching)).not.toContain('evacuation request')
+    expect(opening(watching)).not.toContain('evacuation report')
 
     // any real part of the plan restores it
     const planned = newAssessment()
     planned.attendingProvider = 'Casey'
     planned.evacuation = { ...planned.evacuation, mode: 'ground' }
-    expect(opening(planned)).toBe('This is Casey with a patient report and evacuation request.')
+    expect(opening(planned)).toBe('This is Casey with a patient and evacuation report.')
+
+    // we are usually doing the evacuating, so it is never phrased as a request
+    expect(opening(planned)).not.toContain('request')
 
     const supportOnly = newAssessment()
     supportOnly.evacuation = { ...supportOnly.evacuation, supportRequested: 'Litter team' }
-    expect(opening(supportOnly)).toContain('evacuation request')
+    expect(opening(supportOnly)).toContain('evacuation report')
   })
 
   it('follows the NOLS section order', () => {

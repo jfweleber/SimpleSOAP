@@ -309,17 +309,21 @@ function treatmentSummary(a: Assessment): { text: string; missing: boolean } {
  * Knowing which slot each value fills is what lets it read as English.
  */
 /**
- * Whether this report is actually asking for an evacuation.
+ * Whether this report has anything to say about the evacuation.
  *
- * The opening line announced "a patient report and evacuation request"
- * unconditionally, so a note with an empty plan promised the receiving end a
- * request that never arrived — and a patient released on scene got one for an
- * evacuation the note goes on to say is not required.
+ * Not a request: on a SAR callout the team is usually doing the evacuating
+ * rather than asking for one, and the opening line is telling IC the plan.
+ * Announcing a "request" put words in the responder's mouth about who was
+ * asking whom.
+ *
+ * It still has to be conditional. A note with an empty plan should not promise
+ * the receiving end an evacuation report that never arrives, and a patient
+ * released on scene has none to give.
  *
  * Anticipated problems do not count. They are contingency notes for our own
- * side; filling them in is not the same as asking anyone to come.
+ * side, not something the receiving end is being briefed on.
  */
-function hasEvacuationRequest(e: Assessment['evacuation']): boolean {
+function hasEvacuationReport(e: Assessment['evacuation']): boolean {
   if (e.mode === 'none — patient released') return false
   return (
     e.mode !== null ||
@@ -393,8 +397,8 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
         line([
           'This is ',
           fill(a.attendingProvider),
-          hasEvacuationRequest(a.evacuation)
-            ? ' with a patient report and evacuation request.'
+          hasEvacuationReport(a.evacuation)
+            ? ' with a patient and evacuation report.'
             : ' with a patient report.',
         ]),
         line(['I have a ', fill(who || null), ' whose chief complaint is ', fill(a.chiefComplaint.summary), '.']),
