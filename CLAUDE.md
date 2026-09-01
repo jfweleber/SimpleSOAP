@@ -46,8 +46,9 @@ exit code, so `set -e` never fires — a failed `tsc` then lets Gradle package t
 *previous* web bundle and the APK ships stale. This has happened twice.
 
 **`sudo` on the server needs a password**, so nginx and certbot steps are
-Jamie's to run. Deploys need no root: `/var/www/soap.weleber.net` is owned by
-`jamie`. See `deploy/README.md`.
+Jamie's to run. Deploys need no root — the web root is owned by the deploy
+user. The target host lives in `deploy/target.env`, which is gitignored
+because this repo is public. See `deploy/README.md`.
 
 ## Layout
 

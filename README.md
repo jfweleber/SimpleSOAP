@@ -161,6 +161,11 @@ built or shipped; the PWA covers the same ground. Don't `cap sync` it.
 host. `deploy/README.md` covers DNS, TLS and the caching headers that let an
 installed copy pick up a new version.
 
+```sh
+cp deploy/target.env.example deploy/target.env   # your ssh target; gitignored
+./deploy/deploy.sh
+```
+
 ## Provenance
 
 The project began as a slimmed-down replacement for an app the author used on
@@ -183,3 +188,14 @@ Issues and pull requests are welcome, particularly:
 Please don't send changes that make a record assert something a responder did
 not actually observe, however convenient. That is the one line this project
 holds.
+
+## License
+
+[GNU AGPL v3](LICENSE).
+
+Copyleft, and the network clause is the point: if you modify SimpleSOAP and run
+it as a hosted service, you have to offer your users the modified source. This
+tool is used to write patient records, so anyone relying on a version of it
+should be able to read what that version actually does.
+
+Using it, forking it, or deploying it unmodified needs nothing from you.

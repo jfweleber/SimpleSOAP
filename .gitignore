@@ -38,5 +38,8 @@ android/capacitor-cordova-android-plugins
 *.keystore
 *.jks
 
+# Deploy target — an ssh user on a named host, kept out of a public repo
+deploy/target.env
+
 # Local tooling
 .claude/settings.local.json

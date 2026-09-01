@@ -47,15 +47,23 @@ There is no way around this and no reason to try.
 
 ## 5. Deploy
 
-From this repo on your machine:
+The target is not committed — this repo is public, and an ssh user on a named
+host is half a credential pair. Set yours once:
+
+```sh
+cp deploy/target.env.example deploy/target.env
+$EDITOR deploy/target.env        # SOAP_HOST=you@example.com
+```
+
+Then, from this repo on your machine:
 
 ```sh
 ./deploy/deploy.sh
-# or against a different host:
+# or override for a one-off:
 SOAP_HOST=you@1.2.3.4 ./deploy/deploy.sh
 ```
 
-Needs `rsync` and key-based ssh to the server.
+Needs key-based ssh to the server; the upload is tar over ssh, not rsync.
 
 ## 6. Check it
 
