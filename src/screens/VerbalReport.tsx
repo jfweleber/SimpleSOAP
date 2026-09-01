@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import type { Assessment } from '../model/types'
 import { buildVerbalReport, verbalReportText } from '../report/verbal'
 
@@ -20,6 +20,22 @@ export function VerbalReportScreen({
   const sections = buildVerbalReport(assessment)
   const [copied, setCopied] = useState(false)
   const gaps = sections.reduce((n, s) => n + s.lines.filter((l) => l.incomplete).length, 0)
+
+  /**
+   * Open at the top of the script.
+   *
+   * Screens swap inside one document, so the window keeps whatever scroll
+   * offset it already had — and this report is reached from the bottom of a
+   * long assessment screen, which is where the button sits. That put a
+   * responder partway down a script meant to be read aloud in order, with
+   * nothing on screen to say they had missed the opening lines.
+   *
+   * useLayoutEffect rather than useEffect: the correction has to land before
+   * paint, or the wrong position flashes up first.
+   */
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   const copy = async () => {
     try {
