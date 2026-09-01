@@ -6,6 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SimpleSOAP</title>
       <meta name="theme-color" content="#0c1116" />
+    <script>
+      /* Stamp the theme before anything paints, or every launch in light mode
+         starts with a flash of the dark palette. Deliberately inline and
+         duplicated from src/theme.ts — a module script runs too late to help.
+         Keep the key and the two backgrounds in step with that file. */
+      (function () {
+        try {
+          var saved = localStorage.getItem('simplesoap.theme')
+          var theme =
+            saved === 'light' || saved === 'dark'
+              ? saved
+              : matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark'
+          document.documentElement.dataset.theme = theme
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.content = theme === 'light' ? '#f2f5f7' : '#0c1116'
+        } catch (e) {
+          /* dark is the stylesheet's default, so there is nothing to repair */
+        }
+      })()
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SimpleSOAP" />

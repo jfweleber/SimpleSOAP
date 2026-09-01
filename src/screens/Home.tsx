@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import type { AssessmentSummary } from '../model/types'
 import * as store from '../model/store'
 import { Mark, Wordmark } from '../ui/Logo'
+import { InstallButton } from '../ui/InstallButton'
+import { ThemeToggle } from '../ui/ThemeToggle'
 import { whenText } from '../format/time'
 
 const when = whenText
@@ -36,12 +38,14 @@ export function HomeScreen({
       <header className="apphead">
         <Wordmark />
         <span className="homeActions">
-          <button className="link" onClick={onMonitors}>
+          <button className="headBtn" onClick={onMonitors}>
             Monitors
           </button>
-          <button className="link" onClick={onBackup}>
+          <button className="headBtn" onClick={onBackup}>
             Backup
           </button>
+          <InstallButton />
+          <ThemeToggle />
         </span>
       </header>
 

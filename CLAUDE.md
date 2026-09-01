@@ -26,7 +26,7 @@ native iOS build and there never will be — see the `no-apple-ecosystem` memory
 
 ```sh
 npm run dev            # vite dev server
-npm test               # vitest, ~96 tests
+npm test               # vitest, ~125 tests
 npm run build          # tsc -b && vite build  — MUST pass before packaging
 ./deploy/deploy.sh     # build + tar-over-ssh to soap.weleber.net
 npm run icons          # regenerate launcher and PWA icons from the Waypoint mark
@@ -56,8 +56,10 @@ src/model/     types, factory, IndexedDB store, incident location
 src/ble/       adapters (7 devices), session, live monitor, diagnostics
 src/report/    printed template, verbal radio script, PDF export
 src/screens/   Home, Assessment, Monitors, VerbalReport, Backup, NewNoteLocation
-src/ui/        field components, body map geometry, logo
+src/ui/        field components, body map geometry, logo, header buttons
 src/format/    time — 24-hour everywhere, one place
+src/theme.ts   light/dark palettes, resolved and stamped on <html>
+src/install.ts the home-screen install offer, on both browser paths
 ```
 
 ## Conventions that matter
@@ -77,7 +79,17 @@ directly.
 
 **The report is print-first.** Greyscale only: these get photocopied and faxed,
 and colour-coded anything turns into uniform grey. The body map and the logo are
-black-and-white by design, with tests pinning that.
+black-and-white by design, with tests pinning that. The report carries its own
+stylesheet with its own literals, so the app's theme cannot leak into a record.
+
+**Every colour on screen comes from a token.** Two palettes — dark for a night
+callout, light because a dark screen washes out in direct sun — and both are
+held to 4.5:1. Status colours split three ways: `--warn` for text and rules,
+`--warn-fill` / `--on-warn` for a filled chip, `--warn-bg/-line/-ink` for a
+panel. That split is what lets light mode darken warning *text* while the alarm
+chip stays the same amber in both, and `theme.test.ts` fails the build on a
+colour literal or a token defined in only one palette. A dark-only token is the
+dangerous case: it inherits into light mode and makes a control vanish.
 
 **24-hour time, Fahrenheit, pounds.** US SAR context. `hourCycle: 'h23'`, never
 `hour12: false` — the latter renders midnight as 24:00 in some engines.
@@ -106,6 +118,25 @@ Detected via `navigator.brave.isBrave()`.
 
 **Body map geometry lives in `src/ui/bodyZones.ts`**, shared by the screen and
 the printed report so they cannot drift.
+
+**The theme is stamped twice, on purpose.** An inline script in `index.html`
+sets `data-theme` before anything paints; a module script runs too late and
+light-mode users flash dark on every launch. It duplicates the storage key and
+the two backgrounds from `theme.ts` — keep the two in step. `theme-color` moves
+with the theme too, or the installed app keeps a dark title bar over a light
+page.
+
+**Installing is a data-safety feature, not a nicety.** Browsers clear
+script-writable storage for sites they decide are idle, and notes sit untouched
+between callouts; installing is the largest factor in `storage.persist()` being
+granted, so the button asks again on accept. Chromium hands over
+`beforeinstallprompt`; **WebKit has no install API at all**, so on an iPhone the
+button opens the Share → Add to Home Screen steps instead. That path is the one
+that matters — the web app is the only way this tool reaches an iPhone.
+
+**vitest stubs CSS imports to an empty string**, so `index.css?raw` yields
+nothing. `theme.test.ts` reads the stylesheet off disk instead, which is why
+`tsconfig.app.json` carries node types.
 
 **Capacitor's template fights the icons.** It ships its own
 `ic_launcher_foreground.xml` in `drawable-v24/`, and a `-v24` qualifier beats

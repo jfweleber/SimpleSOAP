@@ -1,22 +1,91 @@
 /* Field-readable dark UI. High contrast, large numerals, no thin type —
    this gets read at arm's length in bad light with cold hands. */
 
+/* Dark is the base palette and the fallback: if the theme script never runs,
+   this is what the app looks like. `src/theme.ts` stamps data-theme on <html>
+   for both themes, so light lives in exactly one block below. */
 :root {
   --bg: #0c1116;
   --panel: #151d24;
   --panel-2: #1d272f;
   --line: #2a3740;
+  /* a second rule weight, for a card that is open against ones that are not */
+  --line-2: #3a4a55;
   --ink: #e8eef3;
   --ink-2: #9fb0bd;
   --ink-3: #6d7f8c;
   --accent: #4db6a0;
   --accent-ink: #06231d;
+  --accent-line: #2f5850;
   /* inputs sit lighter than the page so the typing area is obvious at a glance */
   --input: #1e2a33;
   --input-focus: #26343e;
+
+  /* Status colours come in three parts, because one hex cannot do three jobs.
+     --x is text and rules, --x-fill is a filled chip with --on-x written on it,
+     and --x-bg/-line/-ink dress a panel. Splitting them is what lets a light
+     palette darken the text without washing out the chip. */
   --warn: #e0a33c;
+  --warn-fill: #e0a33c;
+  --on-warn: #1a1200;
+  --warn-bg: #33280f;
+  --warn-line: #5c4720;
+  --warn-ink: #f0d9a6;
+  --warn-ink-hi: #ffe9bf;
   --danger: #e2566d;
+  --danger-bg: #33131c;
+  --danger-line: #5c2233;
+  --danger-ink: #f4c3ce;
+  --ok-bg: #12241f;
+  --ok-ink: #bfe6dc;
+  --ok-ink-hi: #eafaf5;
+
+  --scrim: rgba(4, 8, 11, 0.72);
+  --zone-hover: rgba(77, 182, 160, 0.14);
+  --zone-find: rgba(224, 163, 60, 0.3);
+  --zone-sel: rgba(77, 182, 160, 0.32);
   color-scheme: dark;
+}
+
+/* Light is not an inversion. The dark accent (#4db6a0) reads at about 2:1 as
+   text on white, so light gets a darkened accent for text and rules while the
+   amber chip keeps its colour — an alarm chip has to look the same in both.
+   Every value here clears 4.5:1 against the surface it sits on. */
+:root[data-theme='light'] {
+  --bg: #f2f5f7;
+  --panel: #ffffff;
+  --panel-2: #e8edf1;
+  --line: #c8d3da;
+  --line-2: #a9b8c2;
+  --ink: #0e171d;
+  --ink-2: #3c4d59;
+  --ink-3: #5b6d78;
+  --accent: #14705d;
+  --accent-ink: #ffffff;
+  --accent-line: #8fc9bb;
+  --input: #ffffff;
+  --input-focus: #ffffff;
+
+  --warn: #8a5407;
+  --warn-fill: #e0a33c;
+  --on-warn: #1a1200;
+  --warn-bg: #fbeed3;
+  --warn-line: #d9b263;
+  --warn-ink: #5c3f06;
+  --warn-ink-hi: #3d2a00;
+  --danger: #b31f3c;
+  --danger-bg: #fbe3e8;
+  --danger-line: #e5a3b1;
+  --danger-ink: #7d0f26;
+  --ok-bg: #e2f2ed;
+  --ok-ink: #0f4d3f;
+  --ok-ink-hi: #06332a;
+
+  --scrim: rgba(16, 26, 33, 0.45);
+  --zone-hover: rgba(20, 112, 93, 0.12);
+  --zone-find: rgba(224, 163, 60, 0.42);
+  --zone-sel: rgba(20, 112, 93, 0.28);
+  color-scheme: light;
 }
 
 * {
@@ -142,18 +211,18 @@ body {
 
 /* --- alerts --- */
 .alert {
-  background: #33131c;
-  border: 1px solid #5c2233;
-  color: #f4c3ce;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  color: var(--danger-ink);
   padding: 0.7rem 0.9rem;
   border-radius: 8px;
   font-size: 0.88rem;
 }
 
 .alert.soft {
-  background: #33280f;
-  border-color: #5c4720;
-  color: #f0d9a6;
+  background: var(--warn-bg);
+  border-color: var(--warn-line);
+  color: var(--warn-ink);
 }
 
 .empty {
@@ -183,7 +252,7 @@ body {
 }
 
 .dev.known {
-  border-color: #2f5850;
+  border-color: var(--accent-line);
   background: var(--panel-2);
 }
 
@@ -387,7 +456,7 @@ body {
 }
 
 .inspect.hit {
-  border-color: #2f5850;
+  border-color: var(--accent-line);
   background: var(--panel-2);
 }
 
@@ -449,7 +518,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--line);
   min-height: 40px;
@@ -528,7 +598,7 @@ body {
   border: 1px solid var(--line);
   color: var(--ink-2);
 }
-.tag.lock { color: var(--warn); border-color: #5c4720; }
+.tag.lock { color: var(--warn); border-color: var(--warn-line); }
 .tag.small { text-transform: none; letter-spacing: 0; font-weight: 500; }
 
 /* ===== collapsible cards ===== */
@@ -538,7 +608,7 @@ body {
   border-radius: 10px;
   overflow: hidden;
 }
-.card.open { border-color: var(--rule-2, #3a4a55); background: var(--panel-2); }
+.card.open { border-color: var(--line-2); background: var(--panel-2); }
 
 .cardHead {
   appearance: none;
@@ -696,7 +766,7 @@ body {
 .sheet {
   position: fixed;
   inset: 0;
-  background: rgba(4, 8, 11, 0.72);
+  background: var(--scrim);
   display: flex;
   align-items: flex-end;
   z-index: 40;
@@ -738,13 +808,13 @@ body {
   cursor: pointer;
   transition: fill 0.12s ease;
 }
-.zone:hover { fill: rgba(77, 182, 160, 0.14); }
-.zone.hasFindings { fill: rgba(224, 163, 60, 0.3); stroke: var(--warn); }
-.zone.selected { fill: rgba(77, 182, 160, 0.32); stroke: var(--accent); }
+.zone:hover { fill: var(--zone-hover); }
+.zone.hasFindings { fill: var(--zone-find); stroke: var(--warn); }
+.zone.selected { fill: var(--zone-sel); stroke: var(--accent); }
 .zone:focus-visible { outline: none; stroke: var(--ink); stroke-width: 2; }
-.badgeG circle { fill: var(--warn); }
+.badgeG circle { fill: var(--warn-fill); }
 .badgeG text {
-  fill: #1a1200;
+  fill: var(--on-warn);
   font-size: 8.5px;
   font-weight: 700;
   text-anchor: middle;
@@ -755,14 +825,14 @@ body {
   letter-spacing: 0.08em;
   text-anchor: middle;
 }
-.backBtn.hasFindings { background: var(--warn); color: #1a1200; border-color: var(--warn); }
+.backBtn.hasFindings { background: var(--warn-fill); color: var(--on-warn); border-color: var(--warn-fill); }
 .backBtn.selected { background: var(--accent); color: var(--accent-ink); }
 .backBtn em { font-style: normal; }
 
 .regionList { list-style: none; padding: 0; margin: 0.5rem 0 0; }
 .regionList li { display: flex; align-items: center; gap: 0.3rem; }
 
-.chip.on.alarm { background: var(--warn); border-color: var(--warn); color: #1a1200; }
+.chip.on.alarm { background: var(--warn-fill); border-color: var(--warn-fill); color: var(--on-warn); }
 .unanswered {
   align-self: center;
   color: var(--ink-3);
@@ -778,13 +848,13 @@ body {
   font-size: 0.92rem;
   font-weight: 600;
 }
-.verdict.protect { border-left-color: var(--danger); color: #f4c3ce; background: #2a1219; }
-.verdict.cleared, .verdict.no-moi { border-left-color: var(--accent); color: #bfe6dc; background: #12241f; }
+.verdict.protect { border-left-color: var(--danger); color: var(--danger-ink); background: var(--danger-bg); }
+.verdict.cleared, .verdict.no-moi { border-left-color: var(--accent); color: var(--ok-ink); background: var(--ok-bg); }
 .verdict.incomplete { border-left-color: var(--ink-3); color: var(--ink-2); background: var(--panel); }
 .clearBanner {
-  border: 1px solid #2f5850;
-  background: #12241f;
-  color: #bfe6dc;
+  border: 1px solid var(--accent-line);
+  background: var(--ok-bg);
+  color: var(--ok-ink);
   border-radius: 8px;
   padding: 0.6rem 0.8rem;
   font-size: 0.9rem;
@@ -830,7 +900,7 @@ body {
 .recTo { font-size: 0.83rem; color: var(--accent); margin: 0.3rem 0 0; }
 .recBox {
   background: var(--panel-2);
-  border: 1px solid #2f5850;
+  border: 1px solid var(--accent-line);
   border-radius: 10px;
   padding: 0.8rem 0.9rem;
   display: flex;
@@ -850,9 +920,9 @@ body {
   width: 100%;
   appearance: none;
   border: 0;
-  border-bottom: 1px solid #2f5850;
-  background: #12241f;
-  color: #bfe6dc;
+  border-bottom: 1px solid var(--accent-line);
+  background: var(--ok-bg);
+  color: var(--ok-ink);
   font: inherit;
   font-size: 0.85rem;
   display: flex;
@@ -874,13 +944,13 @@ body {
 @keyframes livePulse { 0%,100% { opacity: 1 } 50% { opacity: 0.3 } }
 @media (prefers-reduced-motion: reduce) { .liveDot { animation: none } }
 .liveText { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.liveText b { color: #eafaf5; font-variant-numeric: tabular-nums; }
+.liveText b { color: var(--ok-ink-hi); font-variant-numeric: tabular-nums; }
 .liveGo { flex: none; opacity: 0.6; font-size: 1.1rem; }
 /* a connected monitor that is not recording into the open note — the one
    state a responder must not read past */
-.liveBar.liveWarn { background: #2a1c0c; border-bottom-color: #6b4a17; color: #f2d9a8; }
-.liveBar.liveWarn .liveDot { background: #e0a63c; }
-.liveBar.liveWarn .liveText b { color: #ffe9bf; }
+.liveBar.liveWarn { background: var(--warn-bg); border-bottom-color: var(--warn-line); color: var(--warn-ink); }
+.liveBar.liveWarn .liveDot { background: var(--warn-fill); }
+.liveBar.liveWarn .liveText b { color: var(--warn-ink-hi); }
 
 /* ===== location ===== */
 .locField { display: flex; flex-direction: column; gap: 0.7rem; align-items: stretch; }
@@ -920,7 +990,52 @@ body {
 .vline.gap { color: var(--ink-2); }
 .vline.gap::first-line { color: var(--ink-2); }
 
-.homeActions { display: flex; gap: 0.9rem; }
+/* The home header carries Monitors, Backup, Install and the theme toggle. On a
+   narrow phone that will not sit beside the wordmark, so the row wraps under it
+   rather than shrinking the targets below what a gloved thumb can hit. */
+.homeActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.headBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.headBtn:disabled { opacity: 0.45; cursor: default; }
+.headBtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* installing is the one action here worth drawing an eye to */
+.headBtn.primary { border-color: var(--accent-line); color: var(--accent); }
+
+.headBtn.iconBtn { padding: 0.4rem; width: 40px; color: var(--ink-2); }
+
+.steps {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+}
+.steps b { font-weight: 650; }
 
 /* ===== wordmark ===== */
 .wordmark { display: flex; align-items: center; gap: 0.5rem; }
