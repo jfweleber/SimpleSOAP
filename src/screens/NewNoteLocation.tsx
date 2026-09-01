@@ -25,7 +25,7 @@ export function NewNoteLocation({
     <main className="screen">
       <header className="apphead">
         <b>New SOAP note</b>
-        <button className="link" onClick={() => onDone({ ...assessment, location })}>
+        <button className="headBtn primary" onClick={() => onDone({ ...assessment, location })}>
           {has ? 'Continue' : 'Skip'}
         </button>
       </header>

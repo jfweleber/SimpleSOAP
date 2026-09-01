@@ -34,11 +34,11 @@ export function VerbalReportScreen({
   return (
     <main className="screen verbal">
       <header className="apphead">
-        <button className="link" onClick={onBack}>
+        <button className="headBtn" onClick={onBack}>
           ‹ Back
         </button>
         <b>Verbal report</b>
-        <button className="link" onClick={copy}>
+        <button className="headBtn primary" onClick={copy}>
           {copied ? 'Copied' : 'Copy'}
         </button>
       </header>

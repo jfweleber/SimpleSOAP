@@ -542,7 +542,6 @@ body {
   min-height: 40px;
 }
 
-.link.strong { font-weight: 650; }
 .link.danger { color: var(--danger); }
 .link:disabled { opacity: 0.4; }
 .link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
@@ -1024,6 +1023,10 @@ body {
 
 /* installing is the one action here worth drawing an eye to */
 .headBtn.primary { border-color: var(--accent-line); color: var(--accent); }
+
+/* a pill reads as something that stays pressed, so a menu it opened has to
+   look open — the flat link it replaced had nothing to say about that */
+.headBtn.open { background: var(--panel-2); border-color: var(--accent-line); color: var(--accent); }
 
 .headBtn.iconBtn { padding: 0.4rem; width: 40px; color: var(--ink-2); }
 

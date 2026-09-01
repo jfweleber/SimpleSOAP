@@ -39,7 +39,7 @@ function IosSteps({ onClose }: { onClose: () => void }) {
         <header className="sheetHead">
           <span />
           <b>Install SimpleSOAP</b>
-          <button className="link strong" onClick={onClose}>
+          <button className="headBtn primary" onClick={onClose}>
             Done
           </button>
         </header>

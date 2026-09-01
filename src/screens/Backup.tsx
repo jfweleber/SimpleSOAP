@@ -89,7 +89,7 @@ export function BackupScreen({ onBack }: { onBack: () => void }) {
   return (
     <main className="screen">
       <header className="apphead">
-        <button className="link" onClick={onBack}>
+        <button className="headBtn" onClick={onBack}>
           ‹ Back
         </button>
         <b>Backup</b>

@@ -208,11 +208,15 @@ export function AssessmentScreen({
   return (
     <main className="screen">
       <header className="apphead">
-        <button className="link" onClick={close}>
+        <button className="headBtn" onClick={close}>
           ‹ All notes
         </button>
         <div className="saveState">{saved ? 'Saved' : 'Saving…'}</div>
-        <button className="link" onClick={() => setMenuOpen((v) => !v)}>
+        <button
+          className={`headBtn${menuOpen ? ' open' : ''}`}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
           Menu
         </button>
       </header>
@@ -1002,12 +1006,12 @@ function VitalsEditor({
     <div className="sheet" role="dialog" aria-label="Vitals">
       <div className="sheetInner">
         <header className="sheetHead">
-          <button className="link" onClick={onCancel}>
+          <button className="headBtn" onClick={onCancel}>
             Cancel
           </button>
           <b>Vitals</b>
           <button
-            className="link strong"
+            className="headBtn primary"
             onClick={() => onSave(v)}
             disabled={locked || isBlankVitalSet(v)}
           >
@@ -1128,7 +1132,7 @@ function HeadToToe({
   return (
     <main className="screen">
       <header className="apphead">
-        <button className="link" onClick={onBack}>
+        <button className="headBtn" onClick={onBack}>
           ‹ Back
         </button>
         <b>Head to toe</b>
@@ -1245,11 +1249,11 @@ function ExportSheet({
     <div className="sheet" role="dialog" aria-label="Export options">
       <div className="sheetInner">
         <header className="sheetHead">
-          <button className="link" onClick={onCancel}>
+          <button className="headBtn" onClick={onCancel}>
             Cancel
           </button>
           <b>Export PDF</b>
-          <button className="link strong" onClick={() => onExport(include)}>
+          <button className="headBtn primary" onClick={() => onExport(include)}>
             Export
           </button>
         </header>

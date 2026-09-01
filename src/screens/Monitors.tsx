@@ -230,7 +230,7 @@ export function MonitorsScreen({
   return (
     <main className="screen">
       <header className="apphead">
-        <button className="link" onClick={onBack}>
+        <button className="headBtn" onClick={onBack}>
           ‹ Back
         </button>
         <b>Monitors</b>
@@ -509,11 +509,11 @@ function MonitorView({
   return (
     <main className="screen">
       <header className="apphead">
-        <button className="link" onClick={onBack}>
+        <button className="headBtn" onClick={onBack}>
           ‹ Back
         </button>
         <b>{live.connection?.adapter.name}</b>
-        <button className="link" onClick={() => session.stop().then(onBack)}>
+        <button className="headBtn" onClick={() => session.stop().then(onBack)}>
           Disconnect
         </button>
       </header>
