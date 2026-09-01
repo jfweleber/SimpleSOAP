@@ -13,7 +13,10 @@
   --line-2: #3a4a55;
   --ink: #e8eef3;
   --ink-2: #9fb0bd;
-  --ink-3: #6d7f8c;
+  /* raised from #6d7f8c, which fell under 4.5:1 on every surface darker than
+     --bg: 4.11 on --panel, 3.53 on --input, 3.08 on --input-focus. This is the
+     tier every hint, unit, timestamp and empty-state line is written in. */
+  --ink-3: #8b9daa;
   --accent: #4db6a0;
   --accent-ink: #06231d;
   --accent-line: #2f5850;

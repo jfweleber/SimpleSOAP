@@ -8,12 +8,18 @@ import { resolveTheme } from './theme'
    source itself rather than a rendered document. */
 const css = readFileSync(fileURLToPath(new URL('./index.css', import.meta.url)), 'utf8')
 
+/* Comments are stripped once, up front. A palette comment naming a token and a
+   number — "--panel: 4.11" — otherwise parses as a declaration and swallows
+   the real one after it, which surfaces as a missing token rather than as a
+   confused test. */
+const source = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
 /** The declarations inside one top-level rule, by selector. */
 function block(selector: string): string {
-  const start = css.indexOf(selector + ' {')
+  const start = source.indexOf(selector + ' {')
   expect(start, `missing rule for ${selector}`).toBeGreaterThan(-1)
-  const open = css.indexOf('{', start)
-  return css.slice(open + 1, css.indexOf('}', open))
+  const open = source.indexOf('{', start)
+  return source.slice(open + 1, source.indexOf('}', open))
 }
 
 function tokens(selector: string): Record<string, string> {
@@ -58,9 +64,9 @@ describe('theme palettes', () => {
    * next one is caught at the commit rather than on a screen in the field.
    */
   it('has no colour literals outside the palettes', () => {
-    const rest = css.slice(css.indexOf('}', css.indexOf(":root[data-theme='light'] {")) + 1)
-    const withoutComments = rest.replace(/\/\*[\s\S]*?\*\//g, '')
-    expect(withoutComments.match(/#[0-9a-fA-F]{3,8}\b|\brgba?\(/g)).toBeNull()
+    const lightRule = source.indexOf(":root[data-theme='light'] {")
+    const rest = source.slice(source.indexOf('}', lightRule) + 1)
+    expect(rest.match(/#[0-9a-fA-F]{3,8}\b|\brgba?\(/g)).toBeNull()
   })
 })
 
