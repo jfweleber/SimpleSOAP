@@ -9,8 +9,14 @@
   --panel: #151d24;
   --panel-2: #1d272f;
   --line: #2a3740;
-  /* a second rule weight, for a card that is open against ones that are not */
-  --line-2: #3a4a55;
+  /* Three tiers of rule, and the middle one is not optional. --line is a
+     decorative hairline: dividers, panel edges, things you are not meant to
+     press. --edge is the visible boundary of anything interactive — button,
+     input, chip, card — and has to clear 3:1 against every surface it sits on
+     (WCAG 1.4.11), because a control nobody can find is not a control. --line-2
+     is heavier still, for an open card against its closed neighbours. */
+  --edge: #707d86;
+  --line-2: #9aa9b4;
   --ink: #e8eef3;
   --ink-2: #9fb0bd;
   /* raised from #6d7f8c, which fell under 4.5:1 on every surface darker than
@@ -35,7 +41,8 @@
   --warn-line: #5c4720;
   --warn-ink: #f0d9a6;
   --warn-ink-hi: #ffe9bf;
-  --danger: #e2566d;
+  /* #e2566d was 4.18:1 on --panel-2, so "Remove" on an open card fell short */
+  --danger: #e95d74;
   --danger-bg: #33131c;
   --danger-line: #5c2233;
   --danger-ink: #f4c3ce;
@@ -59,7 +66,8 @@
   --panel: #ffffff;
   --panel-2: #e8edf1;
   --line: #c8d3da;
-  --line-2: #a9b8c2;
+  --edge: #7e8990;
+  --line-2: #5c686f;
   --ink: #0e171d;
   --ink-2: #3c4d59;
   --ink-3: #5b6d78;
@@ -176,7 +184,7 @@ body {
 
 .btn.stop {
   background: transparent;
-  border-color: var(--line);
+  border-color: var(--edge);
   color: var(--ink);
 }
 
@@ -380,7 +388,7 @@ body {
 .modes {
   display: flex;
   gap: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 9px;
   overflow: hidden;
 }
@@ -425,7 +433,7 @@ body {
   appearance: none;
   width: 100%;
   background: var(--input);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 8px;
   color: var(--ink);
   font: inherit;
@@ -441,7 +449,7 @@ body {
 
 .btn.ghost {
   background: transparent;
-  border-color: var(--line);
+  border-color: var(--edge);
   color: var(--ink-2);
   font-weight: 550;
 }
@@ -561,7 +569,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--panel-2);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -606,7 +614,7 @@ body {
 /* ===== collapsible cards ===== */
 .card {
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -663,7 +671,7 @@ body {
   appearance: none;
   width: 100%;
   background: var(--input);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 8px;
   color: var(--ink);
   font: inherit;
@@ -695,7 +703,7 @@ body {
 .chip {
   appearance: none;
   background: var(--input);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 999px;
   color: var(--ink-2);
   font: inherit;
@@ -737,7 +745,7 @@ body {
   appearance: none;
   width: 100%;
   background: var(--input);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 8px;
   color: var(--ink);
   font: inherit;
@@ -1009,7 +1017,7 @@ body {
   justify-content: center;
   gap: 0.35rem;
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   color: var(--ink);
   font: inherit;
   font-size: 0.85rem;

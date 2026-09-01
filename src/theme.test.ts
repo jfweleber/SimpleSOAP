@@ -70,6 +70,76 @@ describe('theme palettes', () => {
   })
 })
 
+/** WCAG relative luminance, then the contrast ratio between two hex colours. */
+function luminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16)
+  const channel = (c: number) => {
+    const v = c / 255
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  }
+  return (
+    0.2126 * channel((n >> 16) & 255) +
+    0.7152 * channel((n >> 8) & 255) +
+    0.0722 * channel(n & 255)
+  )
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/**
+ * Contrast is a field-legibility requirement here, not a compliance checkbox —
+ * this gets read at arm's length, in the dark or in direct sun, by someone with
+ * cold hands who is also talking on a radio.
+ *
+ * Both failures this pins have already shipped once. --ink-3 sat at 3.08:1 on
+ * --input-focus, so the hint under the field you were typing in was the worst
+ * contrast in the app. And every outlined control drew its boundary with
+ * --line, which is a decorative hairline at 1.05:1 against a panel — the
+ * "+ Add treatment" button was reported from the field as invisible.
+ */
+describe('palette contrast', () => {
+  const SURFACES = ['--bg', '--panel', '--panel-2', '--input', '--input-focus']
+  const themes = { dark: tokens(':root'), light: tokens(":root[data-theme='light']") }
+
+  for (const [name, palette] of Object.entries(themes)) {
+    const ratio = (fg: string, bg: string) => contrast(palette[fg], palette[bg])
+
+    describe(name, () => {
+      it.each(['--ink', '--ink-2', '--ink-3'])('%s reads on every surface', (ink) => {
+        for (const surface of SURFACES) {
+          expect(ratio(ink, surface), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5)
+        }
+      })
+
+      // WCAG 1.4.11: the visible boundary of a control is held to 3:1, not 4.5
+      it('--edge marks out a control on every surface', () => {
+        for (const surface of SURFACES) {
+          expect(ratio('--edge', surface), `--edge on ${surface}`).toBeGreaterThanOrEqual(3)
+        }
+      })
+
+      it.each(['--accent', '--warn', '--danger'])('%s reads as text', (status) => {
+        for (const surface of ['--bg', '--panel', '--panel-2']) {
+          expect(ratio(status, surface), `${status} on ${surface}`).toBeGreaterThanOrEqual(4.5)
+        }
+      })
+
+      it.each([
+        ['--accent-ink', '--accent'],
+        ['--on-warn', '--warn-fill'],
+        ['--ok-ink', '--ok-bg'],
+        ['--warn-ink', '--warn-bg'],
+        ['--danger-ink', '--danger-bg'],
+      ])('%s reads on %s', (ink, fill) => {
+        expect(ratio(ink, fill)).toBeGreaterThanOrEqual(4.5)
+      })
+    })
+  }
+})
+
 describe('resolveTheme', () => {
   it('honours an explicit choice', () => {
     expect(resolveTheme('light')).toBe('light')

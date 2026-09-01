@@ -92,6 +92,15 @@ chip stays the same amber in both, and `theme.test.ts` fails the build on a
 colour literal or a token defined in only one palette. A dark-only token is the
 dangerous case: it inherits into light mode and makes a control vanish.
 
+Rules come in three weights and picking the wrong one is how a control goes
+missing. `--line` is a decorative hairline — dividers, panel edges, anything you
+are not meant to press. **`--edge` is the boundary of anything interactive** —
+button, input, chip, card, segmented control — and clears 3:1 on every surface.
+`--line-2` is heavier still, for an open card against closed neighbours. The
+contrast suite asserts 4.5:1 for text and 3:1 for `--edge` in both palettes; it
+has caught three real regressions, all of them shipped and reported from the
+field before the test existed.
+
 **24-hour time, Fahrenheit, pounds.** US SAR context. `hourCycle: 'h23'`, never
 `hour12: false` — the latter renders midnight as 24:00 in some engines.
 
