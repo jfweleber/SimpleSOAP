@@ -12,7 +12,7 @@
 
 import type { Assessment, ChiefComplaint, VitalSet } from '../model/types'
 import { mechanismLabel, spinalVerdict } from '../model/types'
-import { describeLocation, formatCoordsBoth } from '../model/location'
+import { formatCoordsBoth } from '../model/location'
 import { hhmm } from '../format/time'
 
 export interface VerbalLine {
@@ -371,7 +371,9 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
   const v = latestVitals(a)
   const verdict = spinalVerdict(a.spinal)
   const coords = formatCoordsBoth(a.location)
-  const place = describeLocation(a.location)
+  // the place name alone — describeLocation() folds the grids in, and this
+  // line reads them out separately
+  const place = a.location.description.trim()
 
   const age = a.patient.age.trim()
   const sex = a.patient.sex
@@ -385,8 +387,9 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
       lines: [
         line([
           'We are currently located at ',
-          fill(place || null),
-          coords ? `. Coordinates ${coords}.` : '.',
+          // with no place name the grids are the location, not a footnote
+          fill(place || coords),
+          place && coords ? `. Coordinates ${coords}.` : '.',
         ]),
       ],
     },

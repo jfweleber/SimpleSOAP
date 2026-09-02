@@ -527,10 +527,40 @@ describe('verbal report', () => {
     }
     const sections = buildVerbalReport(a)
     expect(sections[0].heading).toBe('Location first')
-    expect(sections[0].lines[0].text).toContain('Trail junction 4')
-    // both grids, so the reader picks the one their counterpart works in
-    expect(sections[0].lines[0].text).toContain('10T 645708mE 4903538mN')
-    expect(sections[0].lines[0].text).toContain('44.27050, -121.17430')
+    // the place name, then both grids once — the reader picks the one their
+    // counterpart works in
+    expect(sections[0].lines[0].text).toBe(
+      'We are currently located at Trail junction 4.' +
+        ' Coordinates 10T 645708mE 4903538mN / 44.27050, -121.17430.',
+    )
+  })
+
+  it('does not say the coordinates twice', () => {
+    const a = populated()
+    const grids = '10T 645708mE 4903538mN / 44.27050, -121.17430'
+
+    // a fix with no place name IS the location, not a footnote to one
+    a.location = {
+      description: '',
+      latitude: 44.2705,
+      longitude: -121.1743,
+      accuracyM: 5,
+      fixedAt: a.startedAt,
+    }
+    const bare = buildVerbalReport(a)[0].lines[0]
+    expect(bare.text).toBe(`We are currently located at ${grids}.`)
+    expect(bare.text.split('10T').length - 1).toBe(1)
+    expect(bare.incomplete).toBe(false)
+
+    // a place name with no fix stands on its own
+    a.location = { ...a.location, description: 'Trail junction 4', latitude: null, longitude: null }
+    expect(buildVerbalReport(a)[0].lines[0].text).toBe(
+      'We are currently located at Trail junction 4.',
+    )
+
+    // neither leaves a blank to fill, and the line reads as incomplete
+    a.location = { ...a.location, description: '' }
+    expect(buildVerbalReport(a)[0].lines[0].incomplete).toBe(true)
   })
 
   it('only mentions the evacuation when there is something to say', () => {
