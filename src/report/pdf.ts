@@ -83,15 +83,45 @@ function printInBrowser(a: Assessment, options: ReportOptions, jobName: string):
   const title = document.title
   document.title = jobName
 
+  let cleaned = false
   const clean = () => {
+    if (cleaned) return
+    cleaned = true
     host.remove()
     document.title = title
   }
-  window.addEventListener('afterprint', clean, { once: true })
-  // afterprint is unreliable in WebKit, so the node cannot be left to it alone
-  setTimeout(clean, 60_000)
 
-  window.print()
+  /*
+   * Cleanup must not race the preview.
+   *
+   * WebKit builds its print preview asynchronously, from the live DOM, and
+   * fires afterprint early — on an iPhone it can arrive before the preview has
+   * been rendered at all. Removing the host there pulled the report and its
+   * stylesheet out of the page mid-render, and since that stylesheet is what
+   * hides the app, the preview came out as a paginated screenshot of the
+   * assessment screen. It looked like the old iframe bug and it looked
+   * intermittent, because it was a race, not a rollback.
+   *
+   * The host is display:none on screen, so leaving it in place costs nothing.
+   * Give the preview room; the next export clears it regardless.
+   */
+  window.addEventListener('afterprint', () => setTimeout(clean, 30_000), { once: true })
+  setTimeout(clean, 300_000)
+
+  /*
+   * And print a frame late, for the same failure by the other route: print()
+   * in the same task as the insertion can snapshot a document whose new rules
+   * have not been recalculated yet. Two frames is enough for style and layout;
+   * the timer is there because a backgrounded tab never paints.
+   */
+  let printed = false
+  const go = () => {
+    if (printed) return
+    printed = true
+    window.print()
+  }
+  requestAnimationFrame(() => requestAnimationFrame(go))
+  setTimeout(go, 250)
 }
 
 /** The report markup, for previewing inside the app. */

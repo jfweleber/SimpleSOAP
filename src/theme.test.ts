@@ -70,6 +70,37 @@ describe('theme palettes', () => {
   })
 })
 
+/*
+ * The app must not print itself.
+ *
+ * A paginated screenshot of the assessment screen reads like a patient record
+ * and is not one. It reached a printer twice: once through Safari's share
+ * sheet, which never goes near our export code, and once when cleanup raced
+ * WebKit's print preview and removed the report — and with it the only
+ * stylesheet hiding the app — while the preview was still rendering.
+ *
+ * Hiding the screen unconditionally is what makes both harmless, so it is
+ * pinned here rather than left to the one code path that used to carry it.
+ */
+describe('printing', () => {
+  const rules = source.slice(source.indexOf('@media print'))
+
+  it('hides the app on every route to a print dialog', () => {
+    expect(rules).toContain('body > *:not(#soap-print)')
+    expect(rules).toContain('display: none !important')
+  })
+
+  it('says what to do instead, unless the report is already in the page', () => {
+    expect(rules).toContain('Export / print PDF')
+    expect(rules).toContain('body:has(#soap-print)::after')
+  })
+
+  /* Print is the one place a literal belongs: paper is white in both themes. */
+  it('does not theme the printed page', () => {
+    expect(rules).not.toContain('var(--')
+  })
+})
+
 /** WCAG relative luminance, then the contrast ratio between two hex colours. */
 function luminance(hex: string): number {
   const n = parseInt(hex.slice(1), 16)

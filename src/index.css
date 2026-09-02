@@ -1102,3 +1102,39 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* ===== printing ===== */
+/*
+ * The screen is never a patient record.
+ *
+ * A report is printed by Export / print PDF, which injects it into this page
+ * and prints from here, because WebKit will not print an iframe — see
+ * report/pdf.ts. Every other route into a print dialog paginated the
+ * assessment screen instead: Safari's share sheet, a stray Ctrl-P, or a
+ * cleanup that raced WebKit's preview and took the report back out of the page
+ * while it was rendering. What came off the printer looked like a record and
+ * was not one, which is the one thing this app must never produce.
+ *
+ * So the app itself does not print, ever. The worst a race can now do is waste
+ * a sheet of paper. Colours here are literal and deliberately un-themed, the
+ * same as the report's own stylesheet: paper is white, and a night-callout
+ * palette has no business on it.
+ */
+@media print {
+  body > *:not(#soap-print) {
+    display: none !important;
+  }
+
+  body::after {
+    content: 'Open a note and use Export / print PDF to print a SOAP report.';
+    display: block;
+    padding: 2rem 0;
+    font: 12pt system-ui, sans-serif;
+    color: black;
+  }
+
+  /* the real thing is in the page, so it does not need the instructions */
+  body:has(#soap-print)::after {
+    content: none;
+  }
+}
