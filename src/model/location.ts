@@ -78,7 +78,7 @@ export function formatUTM(l: IncidentLocation): string | null {
 
   const e = String(Math.round(easting)).padStart(6, '0')
   const n = String(Math.round(northing)).padStart(7, '0')
-  return `${zone}${latitudeBand(lat)} ${e}mE ${n}mN`
+  return `${zone}${latitudeBand(lat)} ${e}E ${n}N`
 }
 
 /** Zone number, including the two irregularities the standard carries. */
@@ -101,21 +101,22 @@ function latitudeBand(lat: number): string {
 }
 
 /**
- * Both grids on one line.
+ * Both grids on one line, each named.
  *
  * Nobody converts under stress: whoever is on the radio reads the half their
- * counterpart works in and ignores the other.
+ * counterpart works in and ignores the other. The labels are there so picking
+ * the wrong half takes a deliberate mistake rather than a glance.
  */
 export function formatCoordsBoth(l: IncidentLocation): string | null {
   const decimal = formatCoords(l)
   if (!decimal) return null
   const utm = formatUTM(l)
-  return utm ? `${utm} / ${decimal}` : decimal
+  return utm ? `${utm} (UTM) / ${decimal} (Decimal Degree)` : `${decimal} (Decimal Degree)`
 }
 
 export function describeLocation(l: IncidentLocation): string {
   const coords = formatCoordsBoth(l)
-  if (l.description.trim() && coords) return `${l.description.trim()} (${coords})`
+  if (l.description.trim() && coords) return `${l.description.trim()} — ${coords}`
   if (l.description.trim()) return l.description.trim()
   return coords ?? ''
 }

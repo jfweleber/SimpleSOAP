@@ -530,14 +530,14 @@ describe('verbal report', () => {
     // the place name, then both grids once — the reader picks the one their
     // counterpart works in
     expect(sections[0].lines[0].text).toBe(
-      'We are currently located at Trail junction 4.' +
-        ' Coordinates 10T 645708mE 4903538mN / 44.27050, -121.17430.',
+      'We are currently located at Trail junction 4. Coordinates' +
+        ' 10T 645708E 4903538N (UTM) / 44.27050, -121.17430 (Decimal Degree).',
     )
   })
 
   it('does not say the coordinates twice', () => {
     const a = populated()
-    const grids = '10T 645708mE 4903538mN / 44.27050, -121.17430'
+    const grids = '10T 645708E 4903538N (UTM) / 44.27050, -121.17430 (Decimal Degree)'
 
     // a fix with no place name IS the location, not a footnote to one
     a.location = {

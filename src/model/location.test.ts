@@ -20,14 +20,14 @@ describe('UTM', () => {
    */
   it('converts a fix in the field', () => {
     // Arizona, the zone this team actually works in
-    expect(formatUTM(at(34.0, -111.5))).toBe('12S 453826mE 3762269mN')
-    expect(formatUTM(at(33.4, -112.1))).toBe('12S 397706mE 3696173mN')
+    expect(formatUTM(at(34.0, -111.5))).toBe('12S 453826E 3762269N')
+    expect(formatUTM(at(33.4, -112.1))).toBe('12S 397706E 3696173N')
   })
 
   it('handles both hemispheres', () => {
-    expect(formatUTM(at(40.7128, -74.006))).toBe('18T 583959mE 4507351mN')
+    expect(formatUTM(at(40.7128, -74.006))).toBe('18T 583959E 4507351N')
     // south of the equator the northing carries the 10 000 km false origin
-    expect(formatUTM(at(-33.8688, 151.2093))).toBe('56H 334369mE 6250948mN')
+    expect(formatUTM(at(-33.8688, 151.2093))).toBe('56H 334369E 6250948N')
   })
 
   it('keeps the zone irregularities the standard defines', () => {
@@ -48,7 +48,7 @@ describe('UTM', () => {
 describe('listing a location', () => {
   it('carries both grids, UTM first', () => {
     expect(formatCoordsBoth(at(34.0, -111.5))).toBe(
-      '12S 453826mE 3762269mN / 34.00000, -111.50000',
+      '12S 453826E 3762269N (UTM) / 34.00000, -111.50000 (Decimal Degree)',
     )
   })
 
@@ -58,15 +58,16 @@ describe('listing a location', () => {
   })
 
   it('pairs the place name with both grids', () => {
+    // the labels bring their own brackets, so the place name does not add more
     expect(describeLocation(at(34.0, -111.5, 'Trail junction 4'))).toBe(
-      'Trail junction 4 (12S 453826mE 3762269mN / 34.00000, -111.50000)',
+      'Trail junction 4 — 12S 453826E 3762269N (UTM) / 34.00000, -111.50000 (Decimal Degree)',
     )
   })
 
   it('gives a collapsed header something that survives truncation', () => {
     // a place name beats coordinates; half a coordinate would be worse than none
     expect(locationSummary(at(34.0, -111.5, '911 E Sawmill'))).toBe('911 E Sawmill')
-    expect(locationSummary(at(34.0, -111.5))).toBe('12S 453826mE 3762269mN')
+    expect(locationSummary(at(34.0, -111.5))).toBe('12S 453826E 3762269N')
     expect(locationSummary(emptyLocation())).toBe('')
   })
 })
