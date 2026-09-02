@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { IncidentLocation } from '../model/types'
-import { currentPosition, formatCoords, formatCoordsSpoken } from '../model/location'
+import { currentPosition, formatCoords, formatUTM } from '../model/location'
 import { Area } from './fields'
 import { hhmm } from '../format/time'
 
@@ -41,7 +41,7 @@ export function LocationField({
   }
 
   const coords = formatCoords(value)
-  const spoken = formatCoordsSpoken(value)
+  const utm = formatUTM(value)
 
   return (
     <div className="locField">
@@ -58,12 +58,12 @@ export function LocationField({
       {coords && (
         <div className="fixBox">
           <div className="fixRow">
-            <span className="fixLabel">Decimal</span>
-            <span className="mono">{coords}</span>
+            <span className="fixLabel">UTM</span>
+            <span className="mono">{utm}</span>
           </div>
           <div className="fixRow">
-            <span className="fixLabel">Spoken</span>
-            <span className="mono">{spoken}</span>
+            <span className="fixLabel">Decimal</span>
+            <span className="mono">{coords}</span>
           </div>
           <div className="fixMeta">
             {value.accuracyM !== null && `± ${Math.round(value.accuracyM)} m`}

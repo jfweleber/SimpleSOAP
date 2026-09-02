@@ -12,7 +12,7 @@
 
 import type { Assessment, ChiefComplaint, VitalSet } from '../model/types'
 import { mechanismLabel, spinalVerdict } from '../model/types'
-import { describeLocation, formatCoordsSpoken } from '../model/location'
+import { describeLocation, formatCoordsBoth } from '../model/location'
 import { hhmm } from '../format/time'
 
 export interface VerbalLine {
@@ -370,7 +370,7 @@ function evacuationLine(a: Assessment): VerbalLine {
 export function buildVerbalReport(a: Assessment): VerbalSection[] {
   const v = latestVitals(a)
   const verdict = spinalVerdict(a.spinal)
-  const spoken = formatCoordsSpoken(a.location)
+  const coords = formatCoordsBoth(a.location)
   const place = describeLocation(a.location)
 
   const age = a.patient.age.trim()
@@ -386,7 +386,7 @@ export function buildVerbalReport(a: Assessment): VerbalSection[] {
         line([
           'We are currently located at ',
           fill(place || null),
-          spoken ? `. Coordinates ${spoken}.` : '.',
+          coords ? `. Coordinates ${coords}.` : '.',
         ]),
       ],
     },

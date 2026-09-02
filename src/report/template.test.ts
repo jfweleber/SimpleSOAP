@@ -528,7 +528,9 @@ describe('verbal report', () => {
     const sections = buildVerbalReport(a)
     expect(sections[0].heading).toBe('Location first')
     expect(sections[0].lines[0].text).toContain('Trail junction 4')
-    expect(sections[0].lines[0].text).toContain('N 44°')
+    // both grids, so the reader picks the one their counterpart works in
+    expect(sections[0].lines[0].text).toContain('10T 645708mE 4903538mN')
+    expect(sections[0].lines[0].text).toContain('44.27050, -121.17430')
   })
 
   it('only mentions the evacuation when there is something to say', () => {

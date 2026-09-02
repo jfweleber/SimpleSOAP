@@ -34,7 +34,7 @@ import { Area, Choice, Field, NumberField, Row, Section, TimeField, Toggle, TriC
 import { useMonitorSession } from '../ble/useMonitorSession'
 import * as session from '../ble/monitorSession'
 import { LocationField } from '../ui/LocationField'
-import { describeLocation } from '../model/location'
+import { locationSummary } from '../model/location'
 import { hhmm } from '../format/time'
 import { BodyDiagram } from '../ui/BodyDiagram'
 
@@ -269,7 +269,7 @@ export function AssessmentScreen({
 
       <Section
         title="Location"
-        summary={describeLocation(a.location).slice(0, 40)}
+        summary={locationSummary(a.location).slice(0, 40)}
         open={open === 'location'}
         onToggle={() => toggle('location')}
       >
