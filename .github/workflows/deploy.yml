@@ -1,0 +1,68 @@
+name: Build and deploy to production
+
+# SimpleSOAP is a Vite/TypeScript PWA, so unlike the Flask sites the artefact
+# that ships is the BUILD OUTPUT (dist/), not the repository itself. The repo
+# is the source; the server holds only the compiled result.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-SimpleSOAP
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate the deploy on the tests. A red test never reaches production.
+      - name: Lint and test
+        run: |
+          npm run lint
+          npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build produced output
+        run: |
+          test -f dist/index.html || { echo "build produced no dist/index.html"; exit 1; }
+          echo "dist contents:"; ls -la dist | head -20
+
+      - name: Configure SSH
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # --delete matters more here than elsewhere: Vite emits content-hashed
+      # filenames, so without it every build would leave its predecessors
+      # behind and the directory would grow without limit.
+      - name: Deploy dist/ to server
+        run: |
+          rsync -rltzD --delete --no-perms --no-owner --no-group --omit-dir-times \
+            -e "ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            dist/ deploy@${{ secrets.DEPLOY_HOST }}:/var/www/soap.weleber.net/
+
+      - name: Health check
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://soap.weleber.net/ || echo 000)
+            echo "attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then echo "deploy verified"; exit 0; fi
+            sleep 5
+          done
+          echo "health check FAILED"
+          exit 1
