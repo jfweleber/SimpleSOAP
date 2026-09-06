@@ -150,24 +150,58 @@ export const plxAdapter: Adapter = {
 
 const BERRYMED_NAMES = [/^BerryMed/i, /^BM\d/i]
 
+/**
+ * A BCI frame is five bytes, and only the first has bit 7 set. That bit is
+ * the frame boundary: the transparent UART carries a byte stream, so one
+ * notification holds several frames and starts wherever the last one ended.
+ *
+ *   0  1sss ssss   sync; bits 0–3 signal strength
+ *   1  0ppp pppp   pleth (0–100)
+ *   2  0Rfs bbbb   R = pulse rate bit 7, f = no finger, s = searching, bar graph
+ *   3  0rrr rrrr   pulse rate bits 0–6
+ *   4  0ooo oooo   SpO₂, 127 when there is no reading
+ *
+ * The first version of this read offsets 3 and 4 of the notification, which
+ * is right only when a frame happens to start at byte 0. Against a BM1000C
+ * it mostly did not, and the screen showed an SpO₂ of 133 — a sync byte,
+ * read as a number. Perfusion index is not in this frame; the manufacturer's
+ * app shows one, so the device carries it somewhere else, still to be found.
+ */
+const BCI_FRAME = 5
+
+function bciFrameAt(view: DataView, i: number): boolean {
+  if (i + BCI_FRAME > view.byteLength) return false
+  if ((view.getUint8(i) & 0x80) === 0) return false
+  for (let k = 1; k < BCI_FRAME; k++) if (view.getUint8(i + k) & 0x80) return false
+  return true
+}
+
 export const berryMedAdapter: Adapter = {
   id: 'ble_bci',
   name: 'BerryMed / BCI',
   kind: 'pulseOximeter',
   provides: ['spo2', 'heartRate'],
   scanServiceUUIDs: [ISSC_SERVICE],
-  // A 128-bit UUID is 18 of the 31 advertising bytes; BerryMed units leave it
-  // out and put the name there instead, so the name is all a chooser has.
-  scanNamePrefixes: ['BM', 'BerryMed'],
   verified: false,
   matches: (d) => advertises(d, ISSC_SERVICE) || namedLike(d, BERRYMED_NAMES),
   target: () => ({ service: ISSC_SERVICE, characteristic: ISSC_NOTIFY }),
   parse(view) {
-    // 5-byte frame: pulse @3, SpO2 @4. A zero in either means no finger.
-    if (view.byteLength < 5) return null
-    const pulse = view.getUint8(3)
-    const spo2 = view.getUint8(4)
-    if (pulse === 0 || spo2 === 0) return noContact()
+    // the newest complete frame in the notification is the reading
+    let start = -1
+    for (let i = view.byteLength - BCI_FRAME; i >= 0; i--) {
+      if (bciFrameAt(view, i)) {
+        start = i
+        break
+      }
+    }
+    if (start < 0) return null
+
+    const status = view.getUint8(start + 2)
+    const noFinger = (status & 0x10) !== 0
+    const pulse = ((status & 0x40) << 1) | (view.getUint8(start + 3) & 0x7f)
+    const spo2 = view.getUint8(start + 4) & 0x7f
+    if (noFinger || spo2 === 127 || spo2 === 0 || pulse === 0 || pulse === 255) return noContact()
+    if (spo2 > 100) return null
     return { ...emptyMeasurement(), heartRate: pulse, spo2, sensorContact: true }
   },
 }
@@ -184,7 +218,6 @@ export const choiceMMedAdapter: Adapter = {
   kind: 'pulseOximeter',
   provides: ['spo2', 'heartRate', 'respiratoryRate', 'perfusionIndex'],
   scanServiceUUIDs: [NUS_SERVICE],
-  scanNamePrefixes: ['iP'],
   verified: false,
   matches: (d) => advertises(d, CHOICEMMED_ADVERT) || namedLike(d, CHOICEMMED_NAMES),
   target: () => ({ service: NUS_SERVICE, characteristic: FFF0_NOTIFY }),
@@ -229,7 +262,6 @@ export const ffe0Adapter: Adapter = {
   kind: 'pulseOximeter',
   provides: ['spo2', 'heartRate', 'perfusionIndex'],
   scanServiceUUIDs: [FFE0_SERVICE],
-  scanNamePrefixes: ['HealthTree', 'OXIMETER'],
   verified: false,
   matches: (d) => advertises(d, FFE0_SERVICE) || namedLike(d, FFE0_NAMES),
   target: () => ({ service: FFE0_SERVICE, characteristic: FFE0_NOTIFY }),
@@ -365,11 +397,6 @@ export const adapters: Adapter[] = [
 /** Every service UUID worth scanning for, deduplicated. */
 export function scanServiceUUIDs(): string[] {
   return [...new Set(adapters.flatMap((a) => a.scanServiceUUIDs))]
-}
-
-/** Every name prefix any adapter will accept in place of a service UUID. */
-export function scanNamePrefixes(): string[] {
-  return [...new Set(adapters.flatMap((a) => a.scanNamePrefixes ?? []))]
 }
 
 /** First adapter that claims the device, or null if nothing recognizes it. */

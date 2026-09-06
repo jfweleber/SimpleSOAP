@@ -69,12 +69,6 @@ export interface Adapter {
   provides: Array<'heartRate' | 'spo2' | 'perfusionIndex' | 'respiratoryRate' | 'rrIntervals'>
   /** service UUIDs to filter the scan on */
   scanServiceUUIDs: string[]
-  /**
-   * Advertised-name prefixes to admit as well, for devices that leave the
-   * service UUID out of the advertisement. Case-sensitive, literal — the
-   * browser's chooser can match a prefix, not a pattern.
-   */
-  scanNamePrefixes?: string[]
   /** true when this adapter can drive the scanned device */
   matches(device: ScannedDevice): boolean
   /** which characteristic carries the stream */

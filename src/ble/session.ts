@@ -7,12 +7,9 @@
  * advertisement and is for working out why a device is not showing up.
  */
 
-/// <reference types="web-bluetooth" />
-// ^ ships with @capacitor-community/bluetooth-le; only chooseDevice needs it
-
 import { BleClient, type ScanResult } from '@capacitor-community/bluetooth-le'
 import type { Adapter, Measurement, ScannedDevice } from './types'
-import { resolveAdapter, scanNamePrefixes, scanServiceUUIDs } from './adapters'
+import { resolveAdapter, scanServiceUUIDs } from './adapters'
 import { normalize } from './uuid'
 
 export interface Discovered {
@@ -203,53 +200,31 @@ export async function createBond(deviceId: string): Promise<void> {
 }
 
 /**
- * The browser chooser's filter list: any service we speak, OR any name prefix
- * an adapter accepts in its place.
- *
- * Each entry is its own filter because Web Bluetooth ORs the entries and ANDs
- * the fields inside one. The plugin's requestDevice folds a name prefix into
- * every service entry, which turns "this service or this name" into "this
- * service and this name" — so the filters are built here and handed to the
- * browser directly.
- */
-export function chooserFilters(
-  services: string[],
-  namePrefixes: string[],
-): BluetoothLEScanFilter[] {
-  return [
-    ...services.map((service) => ({ services: [service] })),
-    ...namePrefixes.map((namePrefix) => ({ namePrefix })),
-  ]
-}
-
-/**
  * Pick a device through the browser's own chooser.
  *
  * Web Bluetooth deliberately gives no continuous scan by default — the
  * equivalent API sits behind a Chromium flag — so on the web the browser owns
  * device selection and the app never sees anything the user did not pick.
  *
- * The chooser lists only what the filters admit, and a filter on service UUID
- * alone misses a real class of device: a 128-bit UUID is 18 of the 31 bytes an
- * advertisement has, and BerryMed oximeters among others spend those bytes on
- * the name instead. The manufacturer's app found a BM1000C that this chooser
- * could not, which is how that came to light. So the name prefixes go in too.
+ * The chooser is unfiltered, on evidence. A filter on service UUID misses a
+ * real class of device — a 128-bit UUID is 18 of the 31 bytes an advertisement
+ * has, and BerryMed oximeters spend them on the name instead — and a name
+ * filter cannot be OR-ed with a service filter through this plugin, which
+ * folds the two into one AND-ed entry. Building the filters by hand and
+ * registering the browser's pick with the plugin afterwards needs
+ * getDevices(), which was not there on the Pixel that found its BM1000C only
+ * in the unfiltered list. So: everything in range, and the adapter is resolved
+ * after connecting from the real service table.
  *
  * `optionalServices` matters more than it looks: Web Bluetooth blocks access
  * to any service not declared up front, so every service the adapters might
  * need has to be listed here or the GATT calls fail after connecting.
  */
-export async function chooseDevice(mode: ScanMode = 'compatible'): Promise<ScannedDevice | null> {
+export async function chooseDevice(): Promise<ScannedDevice | null> {
   const services = scanServiceUUIDs()
   try {
-    // 'all' is the web's answer to the unfiltered scan: the plugin opens the
-    // chooser with acceptAllDevices when it is given nothing to filter on.
-    // It depends on no API beyond requestDevice itself, which is the point —
-    // it is the mode for finding out why the filtered one shows nothing.
-    const device =
-      mode === 'all'
-        ? await BleClient.requestDevice({ optionalServices: services })
-        : await pickInBrowser(services)
+    // no services and no name: the plugin opens the chooser with acceptAllDevices
+    const device = await BleClient.requestDevice({ optionalServices: services })
     return {
       deviceId: device.deviceId,
       name: device.name ?? undefined,
@@ -263,36 +238,6 @@ export async function chooseDevice(mode: ScanMode = 'compatible'): Promise<Scann
     if (/cancell?ed|user denied|no device selected/i.test(message)) return null
     throw error
   }
-}
-
-/**
- * Open the chooser with OR-ed filters where the browser allows it.
- *
- * The plugin keeps its own map of devices the browser has handed it, and every
- * later call — connect, subscribe — looks the device up there. A device picked
- * outside the plugin has to be registered with it, and getDevices() is the
- * only door in: it re-reads the browser's permitted-device list, which holds
- * the pick as long as the browser persists Bluetooth permissions (Chromium has
- * since 121). Where it does not, the plugin's own chooser is the fallback,
- * with the service-only list it always had.
- */
-async function pickInBrowser(services: string[]): Promise<{ deviceId: string; name?: string }> {
-  const bluetooth = typeof navigator !== 'undefined' ? navigator.bluetooth : undefined
-  if (!bluetooth || typeof bluetooth.getDevices !== 'function') {
-    return BleClient.requestDevice({ services, optionalServices: services })
-  }
-
-  const picked = await bluetooth.requestDevice({
-    filters: chooserFilters(services, scanNamePrefixes()),
-    optionalServices: services,
-  })
-  const devices = await BleClient.getDevices([picked.id])
-  if (devices.length > 0) return devices[0]
-
-  // the browser did not keep the permission, so the plugin cannot see the
-  // pick; its own chooser can still get us a device, at the cost of a second
-  // dialog and the narrower list
-  return BleClient.requestDevice({ services, optionalServices: services })
 }
 
 export interface Inspection {

@@ -16,7 +16,6 @@ import {
   jumperAdapter,
   plxAdapter,
   resolveAdapter,
-  scanNamePrefixes,
   scanServiceUUIDs,
   viatomAdapter,
 } from './adapters'
@@ -84,15 +83,66 @@ describe('pulse oximeter (GATT 0x1822)', () => {
 })
 
 describe('BerryMed / BCI', () => {
-  it('reads pulse at offset 3 and saturation at offset 4', () => {
-    const m = berryMedAdapter.parse(frame(0x00, 0x00, 0x00, 72, 98))
+  // sync byte with signal strength 5, pleth 50, status, then pulse and SpO₂
+  const bci = (pulse: number, spo2: number, status = 0x00) => [
+    0x85,
+    50,
+    status | ((pulse >> 7) & 0x01) << 6,
+    pulse & 0x7f,
+    spo2,
+  ]
+
+  it('reads pulse and saturation from an aligned frame', () => {
+    const m = berryMedAdapter.parse(frame(...bci(72, 98)))
+    expect(m?.heartRate).toBe(72)
+    expect(m?.spo2).toBe(98)
+    expect(m?.sensorContact).toBe(true)
+  })
+
+  it('carries pulse rate bit 7 in the status byte', () => {
+    expect(berryMedAdapter.parse(frame(...bci(138, 97)))?.heartRate).toBe(138)
+  })
+
+  /*
+   * The bug as seen on a BM1000C: SpO₂ 133. The transparent UART is a byte
+   * stream, so a notification starts mid-frame, and reading offsets 3 and 4
+   * lands on the next frame's sync byte.
+   */
+  it('finds the frame boundary when a notification starts mid-frame', () => {
+    // tail of one frame, then a whole one
+    const tail = bci(70, 96).slice(2)
+    const m = berryMedAdapter.parse(frame(...tail, ...bci(72, 98)))
     expect(m?.heartRate).toBe(72)
     expect(m?.spo2).toBe(98)
   })
 
-  it('treats a zero in either field as no contact', () => {
-    expect(berryMedAdapter.parse(frame(0, 0, 0, 0, 98))?.sensorContact).toBe(false)
-    expect(berryMedAdapter.parse(frame(0, 0, 0, 72, 0))?.sensorContact).toBe(false)
+  it('takes the newest complete frame when a notification holds several', () => {
+    const m = berryMedAdapter.parse(
+      frame(...bci(70, 96), ...bci(71, 97), ...bci(72, 98), ...bci(73, 99).slice(0, 3)),
+    )
+    expect(m?.heartRate).toBe(72)
+    expect(m?.spo2).toBe(98)
+  })
+
+  it('never produces a saturation above 100', () => {
+    // no byte pattern that parses can yield the 133 that was on screen
+    for (let b = 0; b < 256; b++) {
+      const m = berryMedAdapter.parse(frame(0x85, 50, 0x00, 72, b))
+      if (m && m.sensorContact) expect(m.spo2).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('reports no contact for the no-finger flag and the invalid sentinels', () => {
+    expect(berryMedAdapter.parse(frame(...bci(72, 98, 0x10)))?.sensorContact).toBe(false)
+    expect(berryMedAdapter.parse(frame(...bci(72, 127)))?.sensorContact).toBe(false)
+    expect(berryMedAdapter.parse(frame(...bci(0, 98)))?.sensorContact).toBe(false)
+    expect(berryMedAdapter.parse(frame(...bci(255, 98)))?.sensorContact).toBe(false)
+  })
+
+  it('drops bytes with no frame in them', () => {
+    expect(berryMedAdapter.parse(frame(0x01, 0x02, 0x03, 0x04, 0x05))).toBeNull()
+    expect(berryMedAdapter.parse(frame(0x85, 0x86, 0x00, 72, 98))).toBeNull()
+    expect(berryMedAdapter.parse(frame(0x85, 50))).toBeNull()
   })
 
   it('matches on device name when no service UUID is advertised', () => {
@@ -201,25 +251,6 @@ describe('registry resolution', () => {
   it('returns null for a device it does not recognize', () => {
     expect(resolveAdapter({ deviceId: 'e', serviceUUIDs: [] })).toBeNull()
     expect(resolveAdapter({ deviceId: 'f', name: 'Random Speaker' })).toBeNull()
-  })
-
-  /*
-   * A BM1000C-O streamed to the manufacturer's app and never appeared in the
-   * browser's chooser: it advertises its name, not its service UUID, and the
-   * chooser was filtering on service alone. Every adapter that recognizes a
-   * name has to offer that name to the chooser too, or the web build can only
-   * find devices the native scan never needed help with.
-   */
-  it('offers the chooser every name an adapter would accept', () => {
-    const prefixes = scanNamePrefixes()
-    expect(prefixes).toContain('BM')
-    expect(prefixes).toContain('BerryMed')
-    expect(prefixes).toContain('iP')
-    expect(prefixes).toContain('HealthTree')
-    for (const prefix of prefixes) {
-      // the browser matches literally; a regex-only pattern would silently match nothing
-      expect(prefix).toMatch(/^[A-Za-z0-9_-]+$/)
-    }
   })
 
   it('lists every service exactly once', () => {
