@@ -239,10 +239,17 @@ export function chooserFilters(
  * to any service not declared up front, so every service the adapters might
  * need has to be listed here or the GATT calls fail after connecting.
  */
-export async function chooseDevice(): Promise<ScannedDevice | null> {
+export async function chooseDevice(mode: ScanMode = 'compatible'): Promise<ScannedDevice | null> {
   const services = scanServiceUUIDs()
   try {
-    const device = await pickInBrowser(services)
+    // 'all' is the web's answer to the unfiltered scan: the plugin opens the
+    // chooser with acceptAllDevices when it is given nothing to filter on.
+    // It depends on no API beyond requestDevice itself, which is the point —
+    // it is the mode for finding out why the filtered one shows nothing.
+    const device =
+      mode === 'all'
+        ? await BleClient.requestDevice({ optionalServices: services })
+        : await pickInBrowser(services)
     return {
       deviceId: device.deviceId,
       name: device.name ?? undefined,

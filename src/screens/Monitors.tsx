@@ -68,12 +68,12 @@ export function MonitorsScreen({
    * The adapter is resolved afterwards from the real service table, since the
    * chooser reports no advertisement data.
    */
-  const chooseOnWeb = useCallback(async () => {
+  const chooseOnWeb = useCallback(async (scanMode: ScanMode) => {
     setNote(null)
     setStatus('busy')
     try {
       await ble.initialize()
-      const device = await ble.chooseDevice()
+      const device = await ble.chooseDevice(scanMode)
       if (!device) {
         setStatus('idle')
         return
@@ -327,12 +327,20 @@ export function MonitorsScreen({
 
       {blocker === 'none' && !native && (
         <>
-          <button className="btn wide" onClick={chooseOnWeb} disabled={busy}>
+          <button className="btn wide" onClick={() => chooseOnWeb('compatible')} disabled={busy}>
             {busy ? 'Waiting for the browser…' : 'Choose a monitor'}
           </button>
           <p className="empty">
             Your browser handles the device list. Only devices currently broadcasting heart rate or
             SpO₂ appear in it.
+          </p>
+          {/* the web's unfiltered scan: for a device the filtered list will not show */}
+          <button className="btn small ghost" onClick={() => chooseOnWeb('all')} disabled={busy}>
+            Show all nearby devices
+          </button>
+          <p className="empty">
+            If your monitor is on and not listed, this shows everything in range. Pick it, and the
+            app works out what it is from the device itself.
           </p>
         </>
       )}
