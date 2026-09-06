@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Frame, Listener, ServiceInfo } from '../ble/diagnostics'
-import { describe, labelFor, listenToEverything, readOnce, shortUuid } from '../ble/diagnostics'
+import {
+  describe,
+  diagnosticReport,
+  labelFor,
+  listenToEverything,
+  readOnce,
+  shortUuid,
+} from '../ble/diagnostics'
 import * as ble from '../ble/session'
 
 /**
@@ -10,10 +17,12 @@ import * as ble from '../ble/session'
  */
 export function Diagnostics({
   deviceId,
+  deviceName,
   framesSeen,
   onResubscribe,
 }: {
   deviceId: string
+  deviceName: string | null
   framesSeen: number
   onResubscribe: () => void
 }) {
@@ -24,6 +33,7 @@ export function Diagnostics({
   const [frames, setFrames] = useState<Frame[]>([])
   const [listening, setListening] = useState(false)
   const [subscribedCount, setSubscribedCount] = useState<number | null>(null)
+  const [sent, setSent] = useState<string | null>(null)
   const listenerRef = useRef<Listener | null>(null)
 
   useEffect(() => {
@@ -100,6 +110,41 @@ export function Diagnostics({
     [deviceId],
   )
 
+  /*
+   * Get the panel's contents off the phone as text. A screenshot of forty hex
+   * frames is not decodable; the share sheet reaches a chat or an email, and
+   * the clipboard covers a desktop browser with no share sheet at all.
+   */
+  const report = useCallback(
+    () => diagnosticReport({ device: deviceName ?? deviceId, services, frames, framesSeen }),
+    [deviceId, deviceName, services, frames, framesSeen],
+  )
+
+  const copyReport = useCallback(async () => {
+    setSent(null)
+    try {
+      await navigator.clipboard.writeText(report())
+      setSent('Copied')
+    } catch (e) {
+      setError(`Could not copy: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }, [report])
+
+  const shareReport = useCallback(async () => {
+    setSent(null)
+    try {
+      await navigator.share({ title: 'SimpleSOAP diagnostics', text: report() })
+      setSent('Shared')
+    } catch (e) {
+      // dismissing the sheet rejects with AbortError; that is not a failure
+      if (!(e instanceof Error && e.name === 'AbortError')) {
+        setError(`Could not share: ${e instanceof Error ? e.message : String(e)}`)
+      }
+    }
+  }, [report])
+
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+
   const notifiable = services?.flatMap((s) => s.characteristics.filter((c) => c.canNotify)) ?? []
 
   return (
@@ -137,6 +182,18 @@ export function Diagnostics({
         {subscribedCount !== null && ` · listening on ${subscribedCount}`}
         {bonded !== null && ` · ${bonded ? 'paired' : 'not paired'}`}
       </p>
+
+      <div className="diagRow">
+        <button className="btn small ghost" onClick={copyReport} disabled={!services && frames.length === 0}>
+          Copy report
+        </button>
+        {canShare && (
+          <button className="btn small ghost" onClick={shareReport} disabled={!services && frames.length === 0}>
+            Share report
+          </button>
+        )}
+        {sent && <span className="dim">{sent}</span>}
+      </div>
 
       {bonded === false && (
         <p className="fieldHint warn">

@@ -191,3 +191,42 @@ export async function readOnce(
     length: view.byteLength,
   }
 }
+
+/**
+ * Everything the panel knows, as text that survives a paste.
+ *
+ * A screenshot of forty hex frames cannot be decoded with any honesty — the
+ * one that prompted this was legible enough to show a 5-byte cadence and not
+ * one digit more. Frames carry their full characteristic UUID and an ISO
+ * timestamp, because the reader is whoever is working out a wire format, and
+ * ambiguity there costs more than length.
+ */
+export function diagnosticReport(input: {
+  device: string
+  services: ServiceInfo[] | null
+  frames: Frame[]
+  framesSeen: number
+  now?: number
+}): string {
+  const lines: string[] = []
+  lines.push(`SimpleSOAP diagnostics — ${input.device} — ${new Date(input.now ?? Date.now()).toISOString()}`)
+  lines.push(`${input.framesSeen} frame${input.framesSeen === 1 ? '' : 's'} on the expected characteristic`)
+
+  lines.push('', 'Services')
+  if (!input.services) {
+    lines.push('  (not read)')
+  } else {
+    for (const service of input.services) {
+      lines.push(`  ${service.label ?? 'Unknown service'}  ${service.uuid}`)
+      for (const c of service.characteristics) {
+        lines.push(`    ${c.uuid}  ${c.properties.join(' · ') || 'no properties'}`)
+      }
+    }
+  }
+
+  lines.push('', `Raw frames, newest first (${input.frames.length})`)
+  for (const f of input.frames) {
+    lines.push(`  ${new Date(f.at).toISOString()}  ${f.characteristic}  ${f.length}B  ${f.hex}`)
+  }
+  return lines.join('\n')
+}

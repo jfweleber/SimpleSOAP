@@ -182,7 +182,10 @@ export const berryMedAdapter: Adapter = {
   kind: 'pulseOximeter',
   provides: ['spo2', 'heartRate'],
   scanServiceUUIDs: [ISSC_SERVICE],
-  verified: false,
+  // BM1000C-O, 2026-09-06: pulse and SpO₂ tracked the unit's own display
+  // once the parser found frame boundaries. Perfusion index is not carried
+  // in this frame and stays unprovided until its source is known.
+  verified: true,
   matches: (d) => advertises(d, ISSC_SERVICE) || namedLike(d, BERRYMED_NAMES),
   target: () => ({ service: ISSC_SERVICE, characteristic: ISSC_NOTIFY }),
   parse(view) {

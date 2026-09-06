@@ -599,6 +599,7 @@ function MonitorView({
 
       <Diagnostics
         deviceId={live.connection?.deviceId ?? ''}
+        deviceName={live.deviceName}
         framesSeen={live.frames}
         onResubscribe={() => {
           session.resubscribe().catch((e) => onError(e instanceof Error ? e.message : String(e)))
