@@ -16,6 +16,8 @@ import {
   jumperAdapter,
   plxAdapter,
   resolveAdapter,
+  scanNamePrefixes,
+  scanServiceUUIDs,
   viatomAdapter,
 } from './adapters'
 import { FFE0_SERVICE, HEART_RATE_SERVICE, ISSC_SERVICE, PLX_SERVICE } from './uuid'
@@ -199,5 +201,30 @@ describe('registry resolution', () => {
   it('returns null for a device it does not recognize', () => {
     expect(resolveAdapter({ deviceId: 'e', serviceUUIDs: [] })).toBeNull()
     expect(resolveAdapter({ deviceId: 'f', name: 'Random Speaker' })).toBeNull()
+  })
+
+  /*
+   * A BM1000C-O streamed to the manufacturer's app and never appeared in the
+   * browser's chooser: it advertises its name, not its service UUID, and the
+   * chooser was filtering on service alone. Every adapter that recognizes a
+   * name has to offer that name to the chooser too, or the web build can only
+   * find devices the native scan never needed help with.
+   */
+  it('offers the chooser every name an adapter would accept', () => {
+    const prefixes = scanNamePrefixes()
+    expect(prefixes).toContain('BM')
+    expect(prefixes).toContain('BerryMed')
+    expect(prefixes).toContain('iP')
+    expect(prefixes).toContain('HealthTree')
+    for (const prefix of prefixes) {
+      // the browser matches literally; a regex-only pattern would silently match nothing
+      expect(prefix).toMatch(/^[A-Za-z0-9_-]+$/)
+    }
+  })
+
+  it('lists every service exactly once', () => {
+    const services = scanServiceUUIDs()
+    expect(new Set(services).size).toBe(services.length)
+    expect(services).toContain(ISSC_SERVICE)
   })
 })

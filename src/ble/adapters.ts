@@ -156,6 +156,9 @@ export const berryMedAdapter: Adapter = {
   kind: 'pulseOximeter',
   provides: ['spo2', 'heartRate'],
   scanServiceUUIDs: [ISSC_SERVICE],
+  // A 128-bit UUID is 18 of the 31 advertising bytes; BerryMed units leave it
+  // out and put the name there instead, so the name is all a chooser has.
+  scanNamePrefixes: ['BM', 'BerryMed'],
   verified: false,
   matches: (d) => advertises(d, ISSC_SERVICE) || namedLike(d, BERRYMED_NAMES),
   target: () => ({ service: ISSC_SERVICE, characteristic: ISSC_NOTIFY }),
@@ -181,6 +184,7 @@ export const choiceMMedAdapter: Adapter = {
   kind: 'pulseOximeter',
   provides: ['spo2', 'heartRate', 'respiratoryRate', 'perfusionIndex'],
   scanServiceUUIDs: [NUS_SERVICE],
+  scanNamePrefixes: ['iP'],
   verified: false,
   matches: (d) => advertises(d, CHOICEMMED_ADVERT) || namedLike(d, CHOICEMMED_NAMES),
   target: () => ({ service: NUS_SERVICE, characteristic: FFF0_NOTIFY }),
@@ -225,6 +229,7 @@ export const ffe0Adapter: Adapter = {
   kind: 'pulseOximeter',
   provides: ['spo2', 'heartRate', 'perfusionIndex'],
   scanServiceUUIDs: [FFE0_SERVICE],
+  scanNamePrefixes: ['HealthTree', 'OXIMETER'],
   verified: false,
   matches: (d) => advertises(d, FFE0_SERVICE) || namedLike(d, FFE0_NAMES),
   target: () => ({ service: FFE0_SERVICE, characteristic: FFE0_NOTIFY }),
@@ -360,6 +365,11 @@ export const adapters: Adapter[] = [
 /** Every service UUID worth scanning for, deduplicated. */
 export function scanServiceUUIDs(): string[] {
   return [...new Set(adapters.flatMap((a) => a.scanServiceUUIDs))]
+}
+
+/** Every name prefix any adapter will accept in place of a service UUID. */
+export function scanNamePrefixes(): string[] {
+  return [...new Set(adapters.flatMap((a) => a.scanNamePrefixes ?? []))]
 }
 
 /** First adapter that claims the device, or null if nothing recognizes it. */
